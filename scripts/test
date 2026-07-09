@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+if [ ! -d "tests" ]; then
+    echo "Aucun dossier tests/ pour le moment — rien à exécuter."
+    exit 0
+fi
+
+pytest --cov=custom_components/veolia --cov-report=term-missing "$@"

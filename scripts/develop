@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+# Create a default config dir if not present
+if [ ! -d "config" ]; then
+    mkdir -p config
+    hass --config config --script ensure_config
+fi
+
+# Expose the integration to Home Assistant via PYTHONPATH
+export PYTHONPATH="${PYTHONPATH:-}:${PWD}/custom_components"
+
+hass --config config --debug

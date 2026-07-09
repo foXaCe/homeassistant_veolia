@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Les releases sont gérées par release-please :
+#   1. Poussez des commits conventionnels (feat:/fix:/…) sur main
+#   2. release-please maintient une Release PR "chore(main): release X.Y.Z"
+#   3. Mergez la Release PR quand vous êtes prêt → tag + release + zip publiés
+
+echo "Ce dépôt utilise release-please."
+echo "Pour publier : mergez la Release PR ouverte par release-please sur GitHub."
+gh pr list --search "chore(main): release" --state open 2>/dev/null || true
