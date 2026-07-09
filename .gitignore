@@ -1,9 +1,43 @@
-__pycache__
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
 .pytest*
-*.egg-info
+.mypy_cache/
+.ruff_cache/
 .coverage
-.vscode
+.coverage.*
 coverage.xml
-.ruff_cache
+htmlcov/
+.tox/
+.nox/
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# HA dev
+config/
+home-assistant_v2.db*
+home-assistant.log*
+.storage/
+
+# Local
+*.local
+.env
+.envrc
 /get_annual_example.txt
 /get_monthly_exemple.txt

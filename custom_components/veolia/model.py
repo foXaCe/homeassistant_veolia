@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from .const import (
@@ -139,7 +139,7 @@ class VeoliaModel:
                 if not date_str:
                     continue
                 d = datetime.strptime(date_str, "%Y-%m-%d")
-                start = datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=timezone.utc)
+                start = datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=UTC)
                 liters = int((rec.get(CONSO) or {}).get(LITRE) or 0)
                 cumul_liters += liters
                 daily_stats_liters.append(
@@ -154,7 +154,7 @@ class VeoliaModel:
                     continue
                 date_str = f"{year}-{month}-{1}"
                 d = datetime.strptime(date_str, "%Y-%m-%d")
-                start = datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=timezone.utc)
+                start = datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=UTC)
                 cubic_meter = float((rec.get(CONSO) or {}).get(CUBIC_METER) or 0)
                 cumul_cubic_meter += cubic_meter
                 monthly_stats_cubic_meters.append(
@@ -179,9 +179,7 @@ class VeoliaModel:
                     continue
                 if cur_state is None:
                     continue
-                start_dt = datetime(
-                    d.year, d.month, d.day, 0, 0, 0, tzinfo=timezone.utc
-                )
+                start_dt = datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=UTC)
                 cur_sum = cur_state
                 # Forward-fill
                 if last_date is not None:
@@ -196,7 +194,7 @@ class VeoliaModel:
                                 0,
                                 0,
                                 0,
-                                tzinfo=timezone.utc,
+                                tzinfo=UTC,
                             )
                             index_stats_m3.append(
                                 {"start": fill_dt, "state": last_state, "sum": last_sum}
@@ -213,7 +211,7 @@ class VeoliaModel:
                 and last_state is not None
                 and last_sum is not None
             ):
-                today = datetime.now(timezone.utc).date()
+                today = datetime.now(UTC).date()
                 gap = (today - last_date).days
                 if gap >= 1:
                     for i in range(1, gap + 1):
@@ -225,7 +223,7 @@ class VeoliaModel:
                             0,
                             0,
                             0,
-                            tzinfo=timezone.utc,
+                            tzinfo=UTC,
                         )
                         index_stats_m3.append(
                             {"start": fill_dt, "state": last_state, "sum": last_sum}
