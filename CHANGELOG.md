@@ -34,55 +34,6 @@ conventional commits.
 
 * dedupe CHANGELOG 2.2.0 section ([c9a3d90](https://github.com/foXaCe/homeassistant_veolia/commit/c9a3d90fa663c95357a6607222d409084ab68b7c))
 
-## [Unreleased]
-
-### Security
-
-- Masquage du **mot de passe dans les logs de debug** : le corps de la requête de
-  connexion Cognito (`AuthParameters.PASSWORD`) était loggué en clair. Corrige l'alerte
-  CodeQL « Clear-text logging of sensitive information ».
-
-### Fixed
-
-- Le coordinator distingue désormais les erreurs d'authentification (déclenchent la
-  ré-authentification) des erreurs transitoires réseau/API (nouvelle tentative au cycle
-  suivant) — une coupure passagère ne casse plus l'intégration.
-- `device_info` du switch d'alerte SMS journalière aligné sur les autres entités
-  (même nom d'appareil).
-
-### Added
-
-- **Flux de ré-authentification** : en cas de mot de passe invalidé, HA propose de
-  ressaisir le mot de passe au lieu de rester en erreur.
-- **Config entry unique** (`unique_id` sur le numéro d'abonnement) : impossible d'ajouter
-  deux fois le même compte.
-- Nouveau capteur **index de facturation** (relevé officiel Veolia), avec les
-  informations de contrat en attributs (n° compteur, mode de relevé/paiement, contrat,
-  adresse de branchement, emplacement, statut, n° client, titulaire, marque).
-
-### Changed
-
-- Migration vers `ConfigEntry.runtime_data` (suppression de `hass.data[DOMAIN]` et du
-  code mort `VeoliaData`).
-- Les switches d'alerte **SMS sont désactivés par défaut** (à activer si vous configurez
-  des seuils d'alerte).
-- Le capteur **prochain prélèvement** affiche la date au format FR (`JJ/MM/AAAA`) ;
-  la date ISO et le montant restent disponibles en attributs (`date`, `amount`).
-- Le capteur **conso journalière** affiche désormais la dernière journée disponible
-  (Veolia publie avec ~1 jour de retard) au lieu de rester vide ; la date du relevé est
-  dans l'attribut `reading_date` et la valeur du jour courant dans l'attribut `today`.
-
-### Added
-
-- Nouveaux capteurs de facturation : **solde du compte** (`sensor` €),
-  **mensualité** (`sensor` €) et **prochain prélèvement** (`sensor` date, avec le
-  montant en attribut), issus des endpoints facturation et mensualisation.
-
-### Security
-
-- Le client vendoré masque désormais l'en-tête `Authorization` (token Bearer) dans
-  les logs de debug (le token n'apparaît plus en clair dans `home-assistant.log`).
-
 ## [2.2.0](https://github.com/foXaCe/homeassistant_veolia/compare/v2.1.0...v2.2.0) (2026-07-09)
 
 ### Added
