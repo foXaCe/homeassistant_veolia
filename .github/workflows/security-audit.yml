@@ -48,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: google/osv-scanner-action/osv-scanner-action@v2
+      - uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
         with:
           scan-args: |
             --recursive
