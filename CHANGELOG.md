@@ -23,6 +23,12 @@ conventional commits.
 
 ## [Unreleased]
 
+### Changed
+
+- Le capteur **conso journalière** affiche désormais la dernière journée disponible
+  (Veolia publie avec ~1 jour de retard) au lieu de rester vide ; la date du relevé est
+  dans l'attribut `reading_date` et la valeur du jour courant dans l'attribut `today`.
+
 ### Added
 
 - Nouveaux capteurs de facturation : **solde du compte** (`sensor` €),

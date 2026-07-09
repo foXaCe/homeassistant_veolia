@@ -137,8 +137,8 @@ class DailyConsumption(VeoliaMesurements):
 
     @property
     def native_value(self) -> int | None:
-        """Return sensor value."""
-        value = self.coordinator.data.computed.daily_today_liters
+        """Return sensor value (last available day, Veolia lags ~1 day)."""
+        value = self.coordinator.data.computed.last_daily_liters
         LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, value)
         return value
 
@@ -147,8 +147,9 @@ class DailyConsumption(VeoliaMesurements):
         """Return extra state."""
         comp = self.coordinator.data.computed
         return {
-            "data_type": comp.daily_today_fiability,
-            "last_report": comp.last_date.isoformat() if comp.last_date else None,
+            "data_type": comp.daily_fiability,
+            "reading_date": comp.last_date.isoformat() if comp.last_date else None,
+            "today": comp.daily_today_liters,
         }
 
     async def async_added_to_hass(self) -> None:
