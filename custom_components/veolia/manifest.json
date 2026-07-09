@@ -16,7 +16,7 @@
     "veolia"
   ],
   "requirements": [
-    "tenacity==9.1.2"
+    "tenacity==9.1.4"
   ],
   "version": "2.4.0"
 }
