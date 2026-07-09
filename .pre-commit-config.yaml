@@ -25,7 +25,7 @@ repos:
           - --skip="./.*,*.csv,*.json,*.ambr"
           - --quiet-level=2
         exclude_types: [csv, json, html, markdown]
-        exclude: ^tests/fixtures/|.github
+        exclude: ^tests/fixtures/|.github|^custom_components/veolia/veolia_api/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.18

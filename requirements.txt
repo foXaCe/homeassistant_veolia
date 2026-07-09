@@ -1,1 +1,1 @@
-veolia_api @ git+https://github.com/foXaCe/veolia-api@v2.2.0
+tenacity==9.1.2

@@ -3,9 +3,6 @@
 from urllib.parse import urlparse
 
 import aiohttp
-from veolia_api import VeoliaAPI
-from veolia_api.exceptions import VeoliaAPIInvalidCredentialsError
-from veolia_api.portals import VEOLIA_PORTAL_CLIENTS
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -13,6 +10,9 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import CONF_PORTAL_URL, DOMAIN, LOGGER
+from .veolia_api import VeoliaAPI
+from .veolia_api.exceptions import VeoliaAPIInvalidCredentialsError
+from .veolia_api.portals import VEOLIA_PORTAL_CLIENTS
 
 
 class VeoliaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):

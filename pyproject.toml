@@ -7,6 +7,8 @@ license = { file = "LICENSE" }
 
 [tool.ruff]
 required-version = ">=0.6.8"
+# Client Veolia vendoré (fork externe) — non soumis au style de l'intégration.
+extend-exclude = ["custom_components/veolia/veolia_api"]
 
 [tool.ruff.lint]
 select = [

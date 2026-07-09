@@ -32,6 +32,7 @@ Entités : sensor / binary_sensor / switch / text
 | `switch.py`        | Activation/désactivation des notifications SMS d'alerte                  |
 | `text.py`          | Saisie des seuils d'alertes (journalier, mensuel, logement vide)         |
 | `const.py`         | Constantes (`DOMAIN`, `CONF_PORTAL_URL`, logger)                         |
+| `veolia_api/`      | Client Veolia vendoré (fork corrigé) : `veolia_api.py`, `portals.py` (registre `hostname → client_id + backend`), `constants.py`, `model.py`, `exceptions.py` — voir `NOTICE.md` |
 | `translations/`    | `en.json`, `fr.json`                                                     |
 
 ## Points notables
@@ -39,14 +40,16 @@ Entités : sensor / binary_sensor / switch / text
 - **Dépendance `recorder`** : l'intégration injecte l'historique de consommation du mois
   en cours dans les statistiques Home Assistant (dashboard Énergie) — les données Veolia
   arrivent avec au minimum 24 h de retard.
-- **Client API externe** : toute la logique d'authentification/portails vit dans
-  [veolia-api](https://github.com/foXaCe/veolia-api) (fork), épinglé par tag git dans
-  `manifest.json` et `requirements.txt`.
+- **Client API vendoré** : la logique d'authentification/portails vit dans le client
+  [veolia-api](https://github.com/foXaCe/veolia-api) (fork), **embarqué** sous
+  `custom_components/veolia/veolia_api/` (voir son `NOTICE.md`). Il est vendoré car
+  hassfest n'accepte que des dépendances PyPI dans `manifest.json` et le fork corrigé
+  n'est pas publié sur PyPI. Seule dépendance tierce : `tenacity` (dans `manifest.json`).
 - **Portails multiples** : le config flow résout la commune via l'API de référence des
   communes, puis choisit le portail (`CONF_PORTAL_URL`). Chaque portail a son propre
-  `client_id` Cognito **et** son backend de données ; le client `veolia_api` (fork)
-  résout les deux par portail (`VEOLIA_PORTALS`), au lieu d'un backend codé en dur.
-  C'est ce qui permet les portails à backend dédié comme `www.ea-pm.fr`
+  `client_id` Cognito **et** son backend de données ; le client vendoré résout les deux
+  par portail (`VEOLIA_PORTALS`), au lieu d'un backend codé en dur. C'est ce qui permet
+  les portails à backend dédié comme `www.ea-pm.fr`
   (Perpignan Méditerranée Métropole → `prd-ael-sirius-pmm-backend`).
 
 ## Release & CI

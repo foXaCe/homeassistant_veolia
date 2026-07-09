@@ -17,10 +17,11 @@ conventional commits.
 
 ### Changed
 
-- Le client `veolia_api` pointe désormais sur le fork
-  [foXaCe/veolia-api](https://github.com/foXaCe/veolia-api) (v2.2.0), qui résout le
+- Client `veolia_api` vendoré sous `custom_components/veolia/veolia_api/` (fork
+  [foXaCe/veolia-api](https://github.com/foXaCe/veolia-api) v2.2.0) : il résout le
   `client_id` **et** le backend de données par portail (au lieu d'un backend codé en
-  dur), permettant les portails à backend dédié comme `www.ea-pm.fr`.
+  dur), permettant les portails à backend dédié comme `www.ea-pm.fr`. Vendoré car
+  hassfest n'accepte que des dépendances PyPI. Seule dépendance ajoutée : `tenacity`.
 - Bootstrap complet du dépôt : CI, release-please, Renovate, sécurité, documentation.
 
 ## [2.1.0] - 2026-07-09
