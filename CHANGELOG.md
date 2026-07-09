@@ -9,6 +9,18 @@ Ce fichier est maintenu automatiquement par
 [release-please](https://github.com/googleapis/release-please) à partir des
 conventional commits.
 
+## [2.2.0](https://github.com/foXaCe/homeassistant_veolia/compare/v2.1.0...v2.2.0) (2026-07-09)
+
+
+### Added
+
+* support portail Eau de Perpignan Méditerranée Métropole (www.ea-pm.fr) ([202bccc](https://github.com/foXaCe/homeassistant_veolia/commit/202bcccb68d89853bb84618dfaaad69915e33930))
+
+
+### Changed
+
+* vendor corrected veolia_api client instead of git dependency ([8c7da12](https://github.com/foXaCe/homeassistant_veolia/commit/8c7da12cacee3d367b3fbbc23999be6967e74ee2))
+
 ## [Unreleased]
 
 ### Added

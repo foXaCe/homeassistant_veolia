@@ -1,14 +1,22 @@
 {
   "domain": "veolia",
   "name": "Veolia Eau",
-  "codeowners": ["@foXaCe"],
+  "codeowners": [
+    "@foXaCe"
+  ],
   "config_flow": true,
-  "dependencies": ["recorder"],
+  "dependencies": [
+    "recorder"
+  ],
   "documentation": "https://github.com/foXaCe/homeassistant_veolia",
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/foXaCe/homeassistant_veolia/issues",
-  "loggers": ["veolia"],
-  "requirements": ["tenacity==9.1.2"],
-  "version": "2.1.0"
+  "loggers": [
+    "veolia"
+  ],
+  "requirements": [
+    "tenacity==9.1.2"
+  ],
+  "version": "2.2.0"
 }
