@@ -9,6 +9,18 @@ Ce fichier est maintenu automatiquement par
 [release-please](https://github.com/googleapis/release-please) à partir des
 conventional commits.
 
+## [2.3.0](https://github.com/foXaCe/homeassistant_veolia/compare/v2.2.0...v2.3.0) (2026-07-09)
+
+
+### Added
+
+* add balance, monthly payment and next direct debit sensors ([cf14113](https://github.com/foXaCe/homeassistant_veolia/commit/cf14113e373151d834a9fdd390cb0124f572ac56))
+
+
+### Documentation
+
+* dedupe CHANGELOG 2.2.0 section ([c9a3d90](https://github.com/foXaCe/homeassistant_veolia/commit/c9a3d90fa663c95357a6607222d409084ab68b7c))
+
 ## [Unreleased]
 
 ### Added
