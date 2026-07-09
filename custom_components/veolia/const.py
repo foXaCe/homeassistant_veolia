@@ -11,6 +11,9 @@ CONF_PORTAL_URL = "portal_url"
 # Options
 DEFAULT_SCAN_INTERVAL_HOURS = 6
 
+# Commune lookup endpoint used by the config flow to check eligibility.
+COMMUNES_LOOKUP_URL = "https://prd-ael-sirius-refcommunes.istefr.fr/communes-nationales"
+
 # API constants keys
 LAST_DATA = -1
 IDX = "index"

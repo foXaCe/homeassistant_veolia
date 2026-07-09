@@ -20,7 +20,13 @@ from homeassistant.helpers.selector import (
     NumberSelectorMode,
 )
 
-from .const import CONF_PORTAL_URL, DEFAULT_SCAN_INTERVAL_HOURS, DOMAIN, LOGGER
+from .const import (
+    COMMUNES_LOOKUP_URL,
+    CONF_PORTAL_URL,
+    DEFAULT_SCAN_INTERVAL_HOURS,
+    DOMAIN,
+    LOGGER,
+)
 from .veolia_api import VeoliaAPI
 from .veolia_api.exceptions import VeoliaAPIInvalidCredentialsError
 from .veolia_api.portals import VEOLIA_PORTAL_CLIENTS
@@ -113,12 +119,12 @@ class VeoliaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 self._errors["base"] = "commune_not_supported"
 
         LOGGER.debug("Fetching communes for postal code %s", self._postal_code)
-        async with (
-            aiohttp.ClientSession() as session,
-            session.get(
-                f"https://prd-ael-sirius-refcommunes.istefr.fr/communes-nationales?q={self._postal_code}"
-            ) as response,
-        ):
+        session = async_get_clientsession(self.hass)
+        async with session.get(
+            COMMUNES_LOOKUP_URL,
+            params={"q": self._postal_code},
+            timeout=aiohttp.ClientTimeout(total=30),
+        ) as response:
             self._communes = await response.json()
             LOGGER.debug("Communes found: %s", self._communes)
 

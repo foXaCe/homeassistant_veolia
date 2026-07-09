@@ -25,6 +25,8 @@ POST = "POST"
 # AsyncIO HTTP/Session
 TIMEOUT = 15
 CONCURRENTS_TASKS = 3
+# Re-login this many seconds before the token actually expires.
+TOKEN_EXPIRY_MARGIN = 60
 
 
 class ConsumptionType(Enum):

@@ -33,6 +33,7 @@ from .constants import (
     LOGIN_URL,
     POST,
     TIMEOUT,
+    TOKEN_EXPIRY_MARGIN,
     TYPE_FRONT,
     ConsumptionType,
 )
@@ -68,7 +69,15 @@ class VeoliaAPI:
         self._client_id = portal.client_id
         self._backend_url = portal.backend_url
         self.account_data = VeoliaAccountData()
-        self.session = session or aiohttp.ClientSession(timeout=TIMEOUT)
+        self._owns_session = session is None
+        self.session = session or aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=TIMEOUT)
+        )
+
+    async def close(self) -> None:
+        """Release the HTTP session if this client owns it."""
+        if self._owns_session and not self.session.closed:
+            await self.session.close()
 
     @retry(
         reraise=True,
@@ -129,7 +138,13 @@ class VeoliaAPI:
             safe_json,
         )
 
-        kwargs: dict = {"headers": req_headers, "allow_redirects": False}
+        kwargs: dict = {
+            "headers": req_headers,
+            "allow_redirects": False,
+            # Per-request timeout: the injected shared session (e.g. the Home
+            # Assistant one) has no total timeout of its own.
+            "timeout": aiohttp.ClientTimeout(total=TIMEOUT),
+        }
 
         if params:
             kwargs["params"] = params
@@ -163,6 +178,9 @@ class VeoliaAPI:
             )
             raise VeoliaAPIRateLimitError("HTTP 429 Too Many Requests")
 
+        if not is_login and response.status == HTTPStatus.UNAUTHORIZED:
+            raise VeoliaAPITokenError("Authentication rejected (HTTP 401)")
+
         return response
 
     async def login(self) -> bool:
@@ -193,10 +211,11 @@ class VeoliaAPI:
         return False
 
     async def _check_token(self) -> None:
-        """Check if the access token is still valid"""
+        """Check if the access token is still valid, re-login otherwise."""
         if (
             not self.account_data.access_token
-            or datetime.now().timestamp() >= self.account_data.token_expiration
+            or datetime.now(UTC).timestamp()
+            >= self.account_data.token_expiration - TOKEN_EXPIRY_MARGIN
         ):
             _LOGGER.debug("No access token or token expired")
             await self.login()
@@ -239,7 +258,7 @@ class VeoliaAPI:
             raise VeoliaAPITokenError("Access token not found")
 
         self.account_data.token_expiration = (
-            datetime.now()
+            datetime.now(UTC)
             + timedelta(seconds=authentication_result.get("ExpiresIn", 0))
         ).timestamp()
         _LOGGER.debug("OK - Access token retrieved")
@@ -448,28 +467,28 @@ class VeoliaAPI:
 
             return AlertSettings(
                 daily_enabled=bool(daily_alert),
-                daily_threshold=daily_alert["valeur"] if daily_alert else None,
+                daily_threshold=daily_alert["valeur"] if daily_alert else 0,
                 daily_notif_email=(
                     daily_alert["moyen_contact"]["souscrit_par_email"]
                     if daily_alert
-                    else None
+                    else False
                 ),
                 daily_notif_sms=(
                     daily_alert["moyen_contact"]["souscrit_par_mobile"]
                     if daily_alert
-                    else None
+                    else False
                 ),
                 monthly_enabled=bool(monthly_alert),
-                monthly_threshold=(monthly_alert["valeur"] if monthly_alert else None),
+                monthly_threshold=(monthly_alert["valeur"] if monthly_alert else 0),
                 monthly_notif_email=(
                     monthly_alert["moyen_contact"]["souscrit_par_email"]
                     if monthly_alert
-                    else None
+                    else False
                 ),
                 monthly_notif_sms=(
                     monthly_alert["moyen_contact"]["souscrit_par_mobile"]
                     if monthly_alert
-                    else None
+                    else False
                 ),
             )
         raise VeoliaAPIGetDataError(
@@ -491,10 +510,10 @@ class VeoliaAPI:
             _LOGGER.debug("OK - Mensualisation plan received")
             return await response.json()
 
-        error_message = (
-            f"call to= mensualisation/plan failed with http status= {response.status}",
+        _LOGGER.warning(
+            "call to mensualisation/plan failed with HTTP status %s",
+            response.status,
         )
-        _LOGGER.error(error_message)
         return {}
 
     @staticmethod
