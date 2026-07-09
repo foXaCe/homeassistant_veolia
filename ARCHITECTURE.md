@@ -40,10 +40,14 @@ Entités : sensor / binary_sensor / switch / text
   en cours dans les statistiques Home Assistant (dashboard Énergie) — les données Veolia
   arrivent avec au minimum 24 h de retard.
 - **Client API externe** : toute la logique d'authentification/portails vit dans
-  [veolia-api](https://github.com/Jezza34000/veolia-api) (`veolia_api` sur PyPI), épinglé
-  dans `manifest.json` et `requirements.txt`.
+  [veolia-api](https://github.com/foXaCe/veolia-api) (fork), épinglé par tag git dans
+  `manifest.json` et `requirements.txt`.
 - **Portails multiples** : le config flow résout la commune via l'API de référence des
-  communes, puis choisit le portail (`CONF_PORTAL_URL`).
+  communes, puis choisit le portail (`CONF_PORTAL_URL`). Chaque portail a son propre
+  `client_id` Cognito **et** son backend de données ; le client `veolia_api` (fork)
+  résout les deux par portail (`VEOLIA_PORTALS`), au lieu d'un backend codé en dur.
+  C'est ce qui permet les portails à backend dédié comme `www.ea-pm.fr`
+  (Perpignan Méditerranée Métropole → `prd-ael-sirius-pmm-backend`).
 
 ## Release & CI
 

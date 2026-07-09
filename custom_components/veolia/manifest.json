@@ -9,6 +9,6 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/foXaCe/homeassistant_veolia/issues",
   "loggers": ["veolia"],
-  "requirements": ["veolia_api==2.1.1"],
+  "requirements": ["veolia_api @ git+https://github.com/foXaCe/veolia-api@v2.2.0"],
   "version": "2.1.0"
 }

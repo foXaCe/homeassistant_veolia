@@ -86,10 +86,22 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Update requirements pinned in the Home Assistant manifest.json",
+      "description": "Update PyPI requirements pinned in the Home Assistant manifest.json",
       "managerFilePatterns": ["/custom_components/veolia/manifest\\.json$/"],
       "matchStrings": ["\"(?<depName>[a-zA-Z0-9._-]+)==(?<currentValue>[0-9][0-9a-zA-Z.]*)\""],
       "datasourceTemplate": "pypi"
+    },
+    {
+      "customType": "regex",
+      "description": "Update the veolia_api git fork tag in manifest.json and requirements.txt",
+      "managerFilePatterns": [
+        "/custom_components/veolia/manifest\\.json$/",
+        "/requirements\\.txt$/"
+      ],
+      "matchStrings": [
+        "git\\+https://github\\.com/(?<depName>[^@\\s\"]+)@(?<currentValue>v[0-9][^\\s\"]*)"
+      ],
+      "datasourceTemplate": "github-tags"
     }
   ],
   "ignorePaths": ["**/node_modules/**", "**/.venv/**", "**/venv/**", "**/__pycache__/**"]

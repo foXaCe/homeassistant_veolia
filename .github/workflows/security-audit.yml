@@ -30,16 +30,21 @@ jobs:
           python-version: "3.13"
           cache: pip
 
-      - name: Install pip-audit
-        run: pipx install pip-audit
-
-      - name: Audit manifest.json requirements
+      # La dépendance runtime est un fork git (veolia_api). On installe les
+      # requirements dans un venv isolé puis on audite l'environnement complet
+      # (paquet + dépendances transitives) — robuste pour les dépendances VCS,
+      # contrairement à `pip-audit --requirement` qui ne parse pas les URLs git.
+      - name: Install runtime requirements
         run: |
-          jq -r '.requirements[]' custom_components/veolia/manifest.json > /tmp/manifest_reqs.txt
-          pip-audit --requirement /tmp/manifest_reqs.txt --strict
+          python -m venv /tmp/auditenv
+          /tmp/auditenv/bin/pip install --upgrade pip pip-audit
+          /tmp/auditenv/bin/pip install -r requirements.txt
 
-      - name: Audit requirements.txt
-        run: pip-audit --requirement requirements.txt --strict
+      # Pas de --strict : la dépendance runtime est un fork git absent de PyPI,
+      # donc non auditable par nom/version (ignorée, pas un échec). Les
+      # dépendances transitives (aiohttp, tenacity…) sont bien auditées.
+      - name: Audit installed environment
+        run: /tmp/auditenv/bin/pip-audit
 
   # Pas de job OSV-Scanner : sans lockfile, osv-scanner résout les dépendances
   # transitives à leur version MINIMALE et remonte des CVE que pip n'installerait

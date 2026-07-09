@@ -11,8 +11,16 @@ conventional commits.
 
 ## [Unreleased]
 
+### Added
+
+- Prise en charge du portail **Eau de Perpignan Méditerranée Métropole** (`www.ea-pm.fr`).
+
 ### Changed
 
+- Le client `veolia_api` pointe désormais sur le fork
+  [foXaCe/veolia-api](https://github.com/foXaCe/veolia-api) (v2.2.0), qui résout le
+  `client_id` **et** le backend de données par portail (au lieu d'un backend codé en
+  dur), permettant les portails à backend dédié comme `www.ea-pm.fr`.
 - Bootstrap complet du dépôt : CI, release-please, Renovate, sécurité, documentation.
 
 ## [2.1.0] - 2026-07-09
