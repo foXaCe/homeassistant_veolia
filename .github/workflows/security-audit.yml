@@ -48,11 +48,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Périmètre runtime uniquement (requirements.txt épinglé, miroir du manifest) :
+      # les deps de dev/test non épinglées sont résolues à leur version minimale par
+      # osv-scanner, ce qui génère des faux positifs — elles sont couvertes par Renovate.
       - uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
         with:
           scan-args: |
-            --recursive
-            ./
+            --lockfile
+            requirements.txt
 
   secret-scan:
     name: Gitleaks
