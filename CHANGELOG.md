@@ -36,6 +36,12 @@ conventional commits.
 
 ## [Unreleased]
 
+### Security
+
+- Masquage du **mot de passe dans les logs de debug** : le corps de la requête de
+  connexion Cognito (`AuthParameters.PASSWORD`) était loggué en clair. Corrige l'alerte
+  CodeQL « Clear-text logging of sensitive information ».
+
 ### Fixed
 
 - Le coordinator distingue désormais les erreurs d'authentification (déclenchent la

@@ -108,13 +108,25 @@ class VeoliaAPI:
         if "Authorization" in safe_headers:
             safe_headers["Authorization"] = "REDACTED"
 
+        # Redact credentials from the JSON body (Cognito login payload carries the
+        # password in AuthParameters) before logging.
+        safe_json = None
+        if json_data is not None:
+            safe_json = {**json_data}
+            auth_params = safe_json.get("AuthParameters")
+            if isinstance(auth_params, dict) and "PASSWORD" in auth_params:
+                safe_json["AuthParameters"] = {**auth_params, "PASSWORD": "REDACTED"}
+            for key in list(safe_json):
+                if key.lower() == "password":
+                    safe_json[key] = "REDACTED"
+
         _LOGGER.debug(
             "Making %s request to %s with params: %s, headers: %s, json: %s",
             method,
             url,
             safe_params,
             safe_headers,
-            json_data,
+            safe_json,
         )
 
         kwargs: dict = {"headers": req_headers, "allow_redirects": False}
