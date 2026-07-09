@@ -23,8 +23,16 @@ conventional commits.
 
 ## [Unreleased]
 
+### Added
+
+- Nouveau capteur **index de facturation** (relevé officiel Veolia), avec les
+  informations de contrat en attributs (n° compteur, mode de relevé/paiement, contrat,
+  adresse de branchement, emplacement, statut, n° client, titulaire, marque).
+
 ### Changed
 
+- Le capteur **prochain prélèvement** affiche la date au format FR (`JJ/MM/AAAA`) ;
+  la date ISO et le montant restent disponibles en attributs (`date`, `amount`).
 - Le capteur **conso journalière** affiche désormais la dernière journée disponible
   (Veolia publie avec ~1 jour de retard) au lieu de rester vide ; la date du relevé est
   dans l'attribut `reading_date` et la valeur du jour courant dans l'attribut `today`.

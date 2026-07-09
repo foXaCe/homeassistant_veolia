@@ -62,6 +62,9 @@
       },
       "next_payment": {
         "name": "Next direct debit"
+      },
+      "billing_index": {
+        "name": "Billing index"
       }
     },
     "switch": {

@@ -2,7 +2,7 @@
 
 Ce dossier est une copie intégrée du client Python **veolia-api**.
 
-- Source : https://github.com/foXaCe/veolia-api (tag `v2.2.1`)
+- Source : https://github.com/foXaCe/veolia-api (tag `v2.2.2`)
 - Fork amont : https://github.com/Jezza34000/veolia-api
 - Licence : MIT
 

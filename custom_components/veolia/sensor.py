@@ -32,6 +32,7 @@ async def async_setup_entry(hass, entry, async_add_devices) -> None:
         BalanceSensor(coordinator, entry),
         MonthlyPaymentSensor(coordinator, entry),
         NextPaymentSensor(coordinator, entry),
+        BillingIndexSensor(coordinator, entry),
     ]
     async_add_devices(sensors)
 
@@ -439,7 +440,7 @@ class MonthlyPaymentSensor(VeoliaEntity):
 
 
 class NextPaymentSensor(VeoliaEntity):
-    """Next scheduled direct debit date sensor (prochain prélèvement)."""
+    """Next scheduled direct debit sensor (prochain prélèvement)."""
 
     @property
     def unique_id(self) -> str:
@@ -452,23 +453,91 @@ class NextPaymentSensor(VeoliaEntity):
         return "next_payment"
 
     @property
-    def native_value(self):
-        """Return sensor value (next direct debit date)."""
+    def native_value(self) -> str | None:
+        """Return the next direct debit date, formatted for display (DD/MM/YYYY).
+
+        A ``device_class: date`` sensor is rendered as raw ISO by the frontend,
+        so we expose a locale-friendly string here and keep the ISO date in the
+        ``date`` attribute for automations.
+        """
         value = self.coordinator.data.computed.next_payment_date
         LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, value)
-        return value
-
-    @property
-    def device_class(self) -> str:
-        """Return the device_class of the sensor."""
-        return SensorDeviceClass.DATE
+        return value.strftime("%d/%m/%Y") if value else None
 
     @property
     def extra_state_attributes(self) -> dict:
         """Return extra state."""
-        return {"amount": self.coordinator.data.computed.next_payment_amount}
+        comp = self.coordinator.data.computed
+        return {
+            "date": comp.next_payment_date.isoformat()
+            if comp.next_payment_date
+            else None,
+            "amount": comp.next_payment_amount,
+        }
 
     @property
     def icon(self) -> str | None:
         """Set icon."""
         return "mdi:calendar-clock"
+
+
+class BillingIndexSensor(VeoliaMesurements):
+    """Official billing meter index sensor (index de facturation)."""
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID to use for this entity."""
+        return f"{self.config_entry.entry_id}_billing_index"
+
+    @property
+    def translation_key(self) -> str:
+        """Translation key for this entity."""
+        return "billing_index"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor value (last official meter index)."""
+        raw = self.coordinator.data.dernier_index_releve
+        LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, raw)
+        try:
+            return float(raw) if raw is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    @property
+    def state_class(self) -> str:
+        """Return the state_class of the sensor."""
+        return SensorStateClass.TOTAL_INCREASING
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the unit_of_measurement of the sensor."""
+        return UnitOfVolume.CUBIC_METERS
+
+    @property
+    def suggested_display_precision(self) -> int:
+        """Return the suggested display precision."""
+        return 0
+
+    @property
+    def icon(self) -> str | None:
+        """Set icon."""
+        return "mdi:counter"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return contract information as attributes."""
+        data = self.coordinator.data
+        return {
+            "reading_date": data.date_index_releve,
+            "meter_number": data.numero_compteur,
+            "reading_mode": data.mode_releve,
+            "payment_mode": data.mode_paiement,
+            "contract": data.libelle_contrat,
+            "branch_address": data.adresse_de_branchement,
+            "meter_location": data.emplacement_compteur,
+            "status": data.statut,
+            "customer_number": data.numero_client,
+            "holder": data.titulaire,
+            "brand": data.marque,
+        }

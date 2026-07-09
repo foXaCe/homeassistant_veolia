@@ -62,6 +62,9 @@
       },
       "next_payment": {
         "name": "Prochain prélèvement"
+      },
+      "billing_index": {
+        "name": "Index de facturation"
       }
     },
     "switch": {

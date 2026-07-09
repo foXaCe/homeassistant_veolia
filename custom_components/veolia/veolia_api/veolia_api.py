@@ -269,6 +269,19 @@ class VeoliaAPI:
             or not self.account_data.numero_compteur
         ):
             raise VeoliaAPIResponseError("Some user data not found in the response")
+
+        # Contract details (optional)
+        abonnement = (
+            (userdata.get("contacts") or [{}])[0]
+            .get("tiers", [{}])[0]
+            .get("abonnements", [{}])[0]
+        )
+        self.account_data.adresse_de_branchement = abonnement.get(
+            "adresse_de_branchement"
+        )
+        self.account_data.emplacement_compteur = abonnement.get("emplacement_compteur")
+        self.account_data.libelle_contrat = abonnement.get("libelle_contrat")
+        self.account_data.statut = abonnement.get("statut")
         _LOGGER.debug("OK - Fetch done for user & billing data")
 
         # Facturation request
@@ -282,6 +295,15 @@ class VeoliaAPI:
         facturation_data = await response_facturation.json()
         self.account_data.numero_pds = facturation_data.get("numero_pds")
         self.account_data.solde = facturation_data.get("solde")
+        self.account_data.dernier_index_releve = facturation_data.get(
+            "dernier_index_releve"
+        )
+        self.account_data.date_index_releve = facturation_data.get("date_index_releve")
+        self.account_data.mode_releve = facturation_data.get("mode_releve")
+        self.account_data.mode_paiement = facturation_data.get("mode_paiement")
+        self.account_data.numero_client = facturation_data.get("numero_client")
+        self.account_data.titulaire = facturation_data.get("titulaire")
+        self.account_data.marque = facturation_data.get("marque")
         if not self.account_data.numero_pds:
             raise VeoliaAPIResponseError("numero_pds not found in the response")
 

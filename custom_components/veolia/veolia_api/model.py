@@ -43,6 +43,17 @@ class VeoliaAccountData:
     numero_compteur: str | None = None
     date_debut_abonnement: str | None = None
     solde: float | None = None
+    dernier_index_releve: float | None = None
+    date_index_releve: str | None = None
+    mode_releve: str | None = None
+    mode_paiement: str | None = None
+    numero_client: str | None = None
+    titulaire: str | None = None
+    marque: str | None = None
+    adresse_de_branchement: str | None = None
+    emplacement_compteur: str | None = None
+    libelle_contrat: str | None = None
+    statut: str | None = None
     monthly_consumption: list[dict] | None = None
     daily_consumption: list[dict] | None = None
     alert_settings: AlertSettings | None = None
