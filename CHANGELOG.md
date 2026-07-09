@@ -9,6 +9,19 @@ Ce fichier est maintenu automatiquement par
 [release-please](https://github.com/googleapis/release-please) à partir des
 conventional commits.
 
+## [2.4.0](https://github.com/foXaCe/homeassistant_veolia/compare/v2.3.0...v2.4.0) (2026-07-09)
+
+
+### Added
+
+* add billing index sensor with contract details, FR date for next payment ([a09dbb7](https://github.com/foXaCe/homeassistant_veolia/commit/a09dbb71d26f3f231a66481fd820641357e18fe0))
+* daily consumption shows last available day instead of empty today ([f2214d8](https://github.com/foXaCe/homeassistant_veolia/commit/f2214d8e2991d82dd9ee59bfb285c0947128a919))
+
+
+### Fixed
+
+* coordinator error handling, reauth flow, runtime_data, unique config entry ([b0125c3](https://github.com/foXaCe/homeassistant_veolia/commit/b0125c3b897ac3287a64ae8bd8fab25443b6a699))
+
 ## [2.3.0](https://github.com/foXaCe/homeassistant_veolia/compare/v2.2.0...v2.3.0) (2026-07-09)
 
 
