@@ -35,7 +35,7 @@ from .veolia_api.portals import VEOLIA_PORTAL_CLIENTS
 class VeoliaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for veolia."""
 
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self) -> None:
         """Initialize."""
