@@ -1,1 +1,11 @@
 blank_issues_enabled: false
+contact_links:
+  - name: Home Assistant Community
+    url: https://community.home-assistant.io/
+    about: Pour les questions générales sur Home Assistant, utilisez le forum communautaire.
+  - name: HACS support
+    url: https://hacs.xyz/
+    about: Pour les problèmes liés à HACS.
+  - name: Discussions
+    url: https://github.com/foXaCe/homeassistant_veolia/discussions
+    about: Pour les questions sur cette intégration.

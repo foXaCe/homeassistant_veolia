@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Open / maintain Release PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish-assets:
+    name: Build + upload zip
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - name: Verify manifest version
+        run: |
+          MV=$(jq -r .version custom_components/veolia/manifest.json)
+          if [ "$MV" != "${{ needs.release-please.outputs.version }}" ]; then
+            echo "Manifest version $MV != release ${{ needs.release-please.outputs.version }}"
+            exit 1
+          fi
+
+      - name: Build zip
+        run: |
+          cd custom_components/veolia
+          zip -r ../../veolia.zip . -x "*.pyc" "__pycache__/*"
+          cd ../..
+          sha256sum veolia.zip > veolia.zip.sha256
+
+      - name: Upload assets to release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: |
+            veolia.zip
+            veolia.zip.sha256
+          fail_on_unmatched_files: true

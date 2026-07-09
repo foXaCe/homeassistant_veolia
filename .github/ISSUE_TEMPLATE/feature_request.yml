@@ -1,7 +1,7 @@
 ---
 name: "Demande de nouvelle fonctionnalité"
 description: "Suggérer une idée pour ce projet"
-labels: "Feature+Request"
+labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
