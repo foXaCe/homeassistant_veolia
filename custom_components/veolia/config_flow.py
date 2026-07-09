@@ -1,5 +1,7 @@
 """Config flow for veolia integration."""
 
+from __future__ import annotations
+
 from collections.abc import Mapping
 from typing import Any
 from urllib.parse import urlparse
@@ -8,11 +10,17 @@ import aiohttp
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlowResult
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.config_entries import ConfigFlowResult, OptionsFlowWithReload
+from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_USERNAME
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
+)
 
-from .const import CONF_PORTAL_URL, DOMAIN, LOGGER
+from .const import CONF_PORTAL_URL, DEFAULT_SCAN_INTERVAL_HOURS, DOMAIN, LOGGER
 from .veolia_api import VeoliaAPI
 from .veolia_api.exceptions import VeoliaAPIInvalidCredentialsError
 from .veolia_api.portals import VEOLIA_PORTAL_CLIENTS
@@ -30,6 +38,14 @@ class VeoliaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._postal_code = None
         self._communes = []
         self._portal_url: str | None = None
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> VeoliaOptionsFlowHandler:
+        """Create the options flow handler."""
+        return VeoliaOptionsFlowHandler()
 
     async def _async_validate(
         self, username: str, password: str, portal_url: str | None
@@ -182,4 +198,39 @@ class VeoliaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema({vol.Required(CONF_PASSWORD): str}),
             errors=self._errors,
             description_placeholders={CONF_USERNAME: reauth_entry.data[CONF_USERNAME]},
+        )
+
+
+class VeoliaOptionsFlowHandler(OptionsFlowWithReload):
+    """Handle the Veolia integration options."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Manage the integration options."""
+        if user_input is not None:
+            return self.async_create_entry(
+                data={CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL])}
+            )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_SCAN_INTERVAL,
+                        default=self.config_entry.options.get(
+                            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_HOURS
+                        ),
+                    ): NumberSelector(
+                        NumberSelectorConfig(
+                            min=1,
+                            max=24,
+                            step=1,
+                            mode=NumberSelectorMode.BOX,
+                            unit_of_measurement="h",
+                        )
+                    ),
+                }
+            ),
         )

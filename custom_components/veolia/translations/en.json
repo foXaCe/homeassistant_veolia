@@ -45,6 +45,27 @@
       "reauth_successful": "Re-authentication was successful"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Veolia options",
+        "data": {
+          "scan_interval": "Update interval (hours)"
+        },
+        "data_description": {
+          "scan_interval": "How often the integration fetches data from the Veolia portal."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "set_alert_failed": {
+      "message": "The Veolia portal rejected the alert settings update."
+    },
+    "alert_settings_unavailable": {
+      "message": "Alert settings are not available yet; try again after the next update."
+    }
+  },
   "entity": {
     "sensor": {
       "veolia_index": {

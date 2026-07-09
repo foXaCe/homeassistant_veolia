@@ -45,6 +45,27 @@
       "reauth_successful": "La ré-authentification a réussi"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options Veolia",
+        "data": {
+          "scan_interval": "Intervalle de mise à jour (heures)"
+        },
+        "data_description": {
+          "scan_interval": "Fréquence à laquelle l'intégration récupère les données du portail Veolia."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "set_alert_failed": {
+      "message": "Le portail Veolia a rejeté la mise à jour des réglages d'alerte."
+    },
+    "alert_settings_unavailable": {
+      "message": "Les réglages d'alerte ne sont pas encore disponibles ; veuillez réessayer après la prochaine mise à jour."
+    }
+  },
   "entity": {
     "sensor": {
       "veolia_index": {

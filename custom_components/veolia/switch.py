@@ -1,7 +1,5 @@
 """Switch platform for Veolia."""
 
-from dataclasses import asdict
-
 from homeassistant.components.switch import SwitchEntity
 
 from .const import DOMAIN, LOGGER, NAME
@@ -79,27 +77,13 @@ class DailySMSAlerts(SwitchEntity):
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the switch on."""
         LOGGER.debug("Turning on %s", self.__class__.__qualname__)
-        self.coordinator.data.alert_settings.daily_notif_sms = True
-        res = await self.coordinator.client_api.set_alerts_settings(
-            self.coordinator.data.alert_settings
-        )
-        if not res:
-            message = f"Failed to set alert= {self.__class__.__qualname__} settings= {asdict(self.coordinator.data.alert_settings)}"
-            raise RuntimeError(message)
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_set_alert_settings(daily_notif_sms=True)
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn the switch off."""
         LOGGER.debug("Turning off %s", self.__class__.__qualname__)
-        self.coordinator.data.alert_settings.daily_notif_sms = False
-        res = await self.coordinator.client_api.set_alerts_settings(
-            self.coordinator.data.alert_settings
-        )
-        if not res:
-            message = f"Failed to set alert= {self.__class__.__qualname__} settings= {asdict(self.coordinator.data.alert_settings)}"
-            raise RuntimeError(message)
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_set_alert_settings(daily_notif_sms=False)
         self.async_write_ha_state()
 
 
@@ -163,27 +147,13 @@ class MonthlySMSAlerts(SwitchEntity):
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the switch on."""
         LOGGER.debug("Turning on %s", self.__class__.__qualname__)
-        self.coordinator.data.alert_settings.monthly_notif_sms = True
-        res = await self.coordinator.client_api.set_alerts_settings(
-            self.coordinator.data.alert_settings
-        )
-        if not res:
-            message = f"Failed to set alert= {self.__class__.__qualname__} settings= {asdict(self.coordinator.data.alert_settings)}"
-            raise RuntimeError(message)
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_set_alert_settings(monthly_notif_sms=True)
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn the switch off."""
         LOGGER.debug("Turning off %s", self.__class__.__qualname__)
-        self.coordinator.data.alert_settings.monthly_notif_sms = False
-        res = await self.coordinator.client_api.set_alerts_settings(
-            self.coordinator.data.alert_settings
-        )
-        if not res:
-            message = f"Failed to set alert= {self.__class__.__qualname__} settings= {asdict(self.coordinator.data.alert_settings)}"
-            raise RuntimeError(message)
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_set_alert_settings(monthly_notif_sms=False)
         self.async_write_ha_state()
 
 
@@ -240,28 +210,16 @@ class UnoccupiedAlertSwitch(SwitchEntity):
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the switch on."""
         LOGGER.debug("Turning on %s", self.__class__.__qualname__)
-        self.coordinator.data.alert_settings.daily_enabled = True
-        self.coordinator.data.alert_settings.daily_threshold = 0
-        self.coordinator.data.alert_settings.daily_notif_sms = True
-        self.coordinator.data.alert_settings.daily_notif_email = True
-        res = await self.coordinator.client_api.set_alerts_settings(
-            self.coordinator.data.alert_settings
+        await self.coordinator.async_set_alert_settings(
+            daily_enabled=True,
+            daily_threshold=0,
+            daily_notif_sms=True,
+            daily_notif_email=True,
         )
-        if not res:
-            message = f"Failed to set alert= {self.__class__.__qualname__} settings= {asdict(self.coordinator.data.alert_settings)}"
-            raise RuntimeError(message)
-        await self.coordinator.async_request_refresh()
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn the switch off."""
         LOGGER.debug("Turning off %s", self.__class__.__qualname__)
-        self.coordinator.data.alert_settings.daily_enabled = False
-        res = await self.coordinator.client_api.set_alerts_settings(
-            self.coordinator.data.alert_settings
-        )
-        if not res:
-            message = f"Failed to set alert= {self.__class__.__qualname__} settings= {asdict(self.coordinator.data.alert_settings)}"
-            raise RuntimeError(message)
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_set_alert_settings(daily_enabled=False)
         self.async_write_ha_state()

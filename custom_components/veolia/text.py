@@ -1,7 +1,5 @@
 """Text entities for Veolia integration."""
 
-from dataclasses import asdict
-
 from homeassistant.components.text import TextEntity
 
 from .const import DOMAIN, LOGGER, NAME
@@ -85,25 +83,17 @@ class DailyThresholdText(TextEntity):
 
     async def async_set_value(self, value: str) -> None:
         """Set the threshold value."""
-        if int(value) == 0:
-            self.coordinator.data.alert_settings.daily_enabled = False
+        threshold = int(value)
+        LOGGER.debug("Setting daily threshold to %s", threshold)
+        if threshold == 0:
+            await self.coordinator.async_set_alert_settings(daily_enabled=False)
         else:
-            self.coordinator.data.alert_settings.daily_enabled = True
-            self.coordinator.data.alert_settings.daily_threshold = value
-            self.coordinator.data.alert_settings.daily_notif_email = True
-            self.coordinator.data.alert_settings.daily_notif_sms = False
-
-        LOGGER.debug(
-            "Setting daily threshold to %s",
-            asdict(self.coordinator.data.alert_settings),
-        )
-        res = await self.coordinator.client_api.set_alerts_settings(
-            self.coordinator.data.alert_settings
-        )
-        if not res:
-            message = f"Failed to set alert= {self.__class__.__qualname__} settings= {asdict(self.coordinator.data.alert_settings)}"
-            raise RuntimeError(message)
-        await self.coordinator.async_request_refresh()
+            await self.coordinator.async_set_alert_settings(
+                daily_enabled=True,
+                daily_threshold=threshold,
+                daily_notif_email=True,
+                daily_notif_sms=False,
+            )
         self.async_write_ha_state()
 
 
@@ -174,23 +164,15 @@ class MonthlyThresholdText(TextEntity):
 
     async def async_set_value(self, value: str) -> None:
         """Set the threshold value."""
-        if int(value) == 0:
-            self.coordinator.data.alert_settings.monthly_enabled = False
+        threshold = int(value)
+        LOGGER.debug("Setting monthly threshold to %s", threshold)
+        if threshold == 0:
+            await self.coordinator.async_set_alert_settings(monthly_enabled=False)
         else:
-            self.coordinator.data.alert_settings.monthly_enabled = True
-            self.coordinator.data.alert_settings.monthly_threshold = value
-            self.coordinator.data.alert_settings.monthly_notif_email = True
-            self.coordinator.data.alert_settings.monthly_notif_sms = False
-
-        LOGGER.debug(
-            "Setting monthly threshold to %s",
-            asdict(self.coordinator.data.alert_settings),
-        )
-        res = await self.coordinator.client_api.set_alerts_settings(
-            self.coordinator.data.alert_settings
-        )
-        if not res:
-            message = f"Failed to set alert= {self.__class__.__qualname__} settings= {asdict(self.coordinator.data.alert_settings)}"
-            raise RuntimeError(message)
-        await self.coordinator.async_request_refresh()
+            await self.coordinator.async_set_alert_settings(
+                monthly_enabled=True,
+                monthly_threshold=threshold,
+                monthly_notif_email=True,
+                monthly_notif_sms=False,
+            )
         self.async_write_ha_state()
