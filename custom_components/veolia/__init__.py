@@ -9,14 +9,13 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
 from .coordinator import VeoliaDataUpdateCoordinator
-from .data import VeoliaConfigEntry, VeoliaData
-from .sensor import LastIndexSensor
-
-__all__ = ["VeoliaData", "LastIndexSensor"]
+from .data import VeoliaConfigEntry
 
 PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
     Platform.SENSOR,
     Platform.SWITCH,
+    Platform.TEXT,
 ]
 
 CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
@@ -27,40 +26,25 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
-async def async_setup_entry(hass, entry):
+async def async_setup_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> bool:
     """Set up Veolia from a config entry."""
     coordinator = VeoliaDataUpdateCoordinator(hass)
     await coordinator.async_config_entry_first_refresh()
 
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = coordinator
+    entry.runtime_data = coordinator
 
-    await hass.config_entries.async_forward_entry_setups(
-        entry, ["sensor", "switch", "text", "binary_sensor"]
-    )
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
-async def async_unload_entry(
-    hass: HomeAssistant,
-    entry: VeoliaConfigEntry,
-) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> bool:
     """Unload a config entry."""
-    unload_ok = await hass.config_entries.async_unload_platforms(
-        entry, ["sensor", "switch", "text", "binary_sensor"]
-    )
-    if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
-    return unload_ok
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def async_reload_entry(
-    hass: HomeAssistant,
-    entry: VeoliaConfigEntry,
-) -> None:
+async def async_reload_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> None:
     """Reload config entry."""
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_remove_config_entry_device(

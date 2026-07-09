@@ -10,7 +10,7 @@ from .const import DOMAIN, LOGGER, NAME
 async def async_setup_entry(hass, entry, async_add_devices) -> None:
     """Set up switch platform."""
     LOGGER.debug("Setting up switch platform")
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     switches = [
         DailySMSAlerts(coordinator, entry),
         MonthlySMSAlerts(coordinator, entry),
@@ -33,8 +33,10 @@ class DailySMSAlerts(SwitchEntity):
         return {
             "identifiers": {(DOMAIN, self.config_entry.entry_id)},
             "manufacturer": NAME,
-            "name": NAME,
+            "name": f"{NAME} {self.coordinator.data.id_abonnement}",
         }
+
+    _attr_entity_registry_enabled_default = False
 
     @property
     def unique_id(self) -> str:
@@ -103,6 +105,8 @@ class DailySMSAlerts(SwitchEntity):
 
 class MonthlySMSAlerts(SwitchEntity):
     """Representation of the monthly SMS alert switch."""
+
+    _attr_entity_registry_enabled_default = False
 
     def __init__(self, coordinator, config_entry) -> None:
         """Initialize the entity."""

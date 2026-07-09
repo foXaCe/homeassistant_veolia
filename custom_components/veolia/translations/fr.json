@@ -23,6 +23,13 @@
           "username": "Nom d'utilisateur",
           "password": "Mot de passe"
         }
+      },
+      "reauth_confirm": {
+        "title": "Ré-authentification",
+        "description": "Les identifiants de {username} ne sont plus valides. Veuillez saisir le nouveau mot de passe :",
+        "data": {
+          "password": "Mot de passe"
+        }
       }
     },
     "error": {
@@ -34,7 +41,8 @@
       "no_account": "Aucun compte Veolia trouvé pour ce code postal"
     },
     "abort": {
-      "already_configured": "Ce compte est déjà configuré"
+      "already_configured": "Ce compte est déjà configuré",
+      "reauth_successful": "La ré-authentification a réussi"
     }
   },
   "entity": {

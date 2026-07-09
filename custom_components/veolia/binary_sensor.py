@@ -8,7 +8,7 @@ from .const import DOMAIN, LOGGER, NAME
 async def async_setup_entry(hass, entry, async_add_devices) -> None:
     """Set up switch platform."""
     LOGGER.debug("Setting up binary_sensor platform")
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     switches = [
         DailyAlerts(coordinator, entry),
         MonthlyAlerts(coordinator, entry),

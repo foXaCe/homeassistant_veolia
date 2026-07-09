@@ -10,7 +10,7 @@ from .const import DOMAIN, LOGGER, NAME
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
     """Set up text platform."""
     LOGGER.debug("Setting up text platform")
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     texts = [
         DailyThresholdText(coordinator, entry),
         MonthlyThresholdText(coordinator, entry),

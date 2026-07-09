@@ -23,14 +23,30 @@ conventional commits.
 
 ## [Unreleased]
 
+### Fixed
+
+- Le coordinator distingue désormais les erreurs d'authentification (déclenchent la
+  ré-authentification) des erreurs transitoires réseau/API (nouvelle tentative au cycle
+  suivant) — une coupure passagère ne casse plus l'intégration.
+- `device_info` du switch d'alerte SMS journalière aligné sur les autres entités
+  (même nom d'appareil).
+
 ### Added
 
+- **Flux de ré-authentification** : en cas de mot de passe invalidé, HA propose de
+  ressaisir le mot de passe au lieu de rester en erreur.
+- **Config entry unique** (`unique_id` sur le numéro d'abonnement) : impossible d'ajouter
+  deux fois le même compte.
 - Nouveau capteur **index de facturation** (relevé officiel Veolia), avec les
   informations de contrat en attributs (n° compteur, mode de relevé/paiement, contrat,
   adresse de branchement, emplacement, statut, n° client, titulaire, marque).
 
 ### Changed
 
+- Migration vers `ConfigEntry.runtime_data` (suppression de `hass.data[DOMAIN]` et du
+  code mort `VeoliaData`).
+- Les switches d'alerte **SMS sont désactivés par défaut** (à activer si vous configurez
+  des seuils d'alerte).
 - Le capteur **prochain prélèvement** affiche la date au format FR (`JJ/MM/AAAA`) ;
   la date ISO et le montant restent disponibles en attributs (`date`, `amount`).
 - Le capteur **conso journalière** affiche désormais la dernière journée disponible

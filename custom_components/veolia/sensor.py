@@ -15,14 +15,14 @@ from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util.unit_conversion import VolumeConverter
 
-from .const import DOMAIN, LOGGER
+from .const import LOGGER
 from .entity import VeoliaEntity, VeoliaMesurements
 
 
 async def async_setup_entry(hass, entry, async_add_devices) -> None:
     """Set up sensor platform."""
     LOGGER.debug("Setting up sensor platform")
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     sensors = [
         LastIndexSensor(coordinator, entry),
         DailyConsumption(coordinator, entry),
