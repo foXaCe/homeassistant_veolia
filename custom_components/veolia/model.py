@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
-from typing import Any
+from typing import Any, TypedDict
 
 from .const import (
     CONSO,
@@ -23,6 +23,14 @@ from .const import (
     MONTH,
     YEAR,
 )
+
+
+class StatisticsRow(TypedDict):
+    """One recorder statistics row (cumulative sum series)."""
+
+    start: datetime
+    state: float
+    sum: float
 
 
 def _safe_last(seq: Iterable[Any]) -> Any | None:
@@ -42,7 +50,9 @@ def _parse_date(s: str) -> date | None:
         return None
 
 
-def _find_last_for_date(records: list[dict], d: date) -> dict | None:
+def _find_last_for_date(
+    records: list[dict[str, Any]], d: date
+) -> dict[str, Any] | None:
     """Find the most recent record matching date ``d``."""
     for rec in reversed(records or []):
         if _parse_date(rec.get(DATA_DATE, "")) == d:
@@ -63,7 +73,7 @@ def _midnight_utc(d: date) -> datetime:
     return datetime(d.year, d.month, d.day, tzinfo=UTC)
 
 
-def _compute_annual_total(monthly: list[dict], year: int) -> float | None:
+def _compute_annual_total(monthly: list[dict[str, Any]], year: int) -> float | None:
     """Sum the monthly consumption (m³) recorded for ``year``."""
     try:
         return float(
@@ -77,9 +87,9 @@ def _compute_annual_total(monthly: list[dict], year: int) -> float | None:
         return None
 
 
-def _compute_daily_stats(daily: list[dict]) -> list[dict]:
+def _compute_daily_stats(daily: list[dict[str, Any]]) -> list[StatisticsRow]:
     """Build cumulative daily-consumption statistics rows (liters)."""
-    stats: list[dict] = []
+    stats: list[StatisticsRow] = []
     cumul = 0
     for rec in daily:
         d = _parse_date(rec.get(DATA_DATE, ""))
@@ -91,9 +101,9 @@ def _compute_daily_stats(daily: list[dict]) -> list[dict]:
     return stats
 
 
-def _compute_monthly_stats(monthly: list[dict]) -> list[dict]:
+def _compute_monthly_stats(monthly: list[dict[str, Any]]) -> list[StatisticsRow]:
     """Build cumulative monthly-consumption statistics rows (m³)."""
-    stats: list[dict] = []
+    stats: list[StatisticsRow] = []
     cumul = 0.0
     for rec in monthly:
         year = rec.get(YEAR)
@@ -110,9 +120,11 @@ def _compute_monthly_stats(monthly: list[dict]) -> list[dict]:
     return stats
 
 
-def _compute_index_stats(daily: list[dict], today: date) -> list[dict]:
+def _compute_index_stats(
+    daily: list[dict[str, Any]], today: date
+) -> list[StatisticsRow]:
     """Build meter-index statistics rows (m³), forward-filling missing days."""
-    stats: list[dict] = []
+    stats: list[StatisticsRow] = []
     prev_state: float | None = None
     prev_date: date | None = None
     for record in daily:
@@ -202,9 +214,9 @@ class VeoliaComputed:
     last_date: date | None
     daily_fiability: str | None
     monthly_fiability: str | None
-    daily_stats_liters: list[dict]
-    monthly_stats_cubic_meters: list[dict]
-    index_stats_m3: list[dict]
+    daily_stats_liters: list[StatisticsRow]
+    monthly_stats_cubic_meters: list[StatisticsRow]
+    index_stats_m3: list[StatisticsRow]
     daily_today_liters: int | None
     daily_today_m3: float | None
     daily_today_fiability: str | None

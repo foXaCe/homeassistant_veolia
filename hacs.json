@@ -2,5 +2,5 @@
   "name": "Veolia Eau",
   "render_readme": true,
   "country": "FR",
-  "homeassistant": "2025.1.0"
+  "homeassistant": "2025.8.0"
 }

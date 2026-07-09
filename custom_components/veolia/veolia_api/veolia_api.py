@@ -1,13 +1,15 @@
-"""Veolia API client"""
+"""Veolia API client."""
+
+from __future__ import annotations
 
 import asyncio
-import itertools
-import logging
-import re
 from collections.abc import Coroutine, Iterator
 from datetime import UTC, date, datetime, timedelta
 from http import HTTPStatus
-from typing import Any
+import itertools
+import logging
+import re
+from typing import Any, cast
 from urllib.parse import urlencode
 
 import aiohttp
@@ -16,15 +18,6 @@ from tenacity import (
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-)
-
-from .exceptions import (
-    VeoliaAPIGetDataError,
-    VeoliaAPIInvalidCredentialsError,
-    VeoliaAPIRateLimitError,
-    VeoliaAPIResponseError,
-    VeoliaAPISetDataError,
-    VeoliaAPITokenError,
 )
 
 from .constants import (
@@ -37,6 +30,14 @@ from .constants import (
     TYPE_FRONT,
     ConsumptionType,
 )
+from .exceptions import (
+    VeoliaAPIGetDataError,
+    VeoliaAPIInvalidCredentialsError,
+    VeoliaAPIRateLimitError,
+    VeoliaAPIResponseError,
+    VeoliaAPISetDataError,
+    VeoliaAPITokenError,
+)
 from .model import AlertSettings, VeoliaAccountData
 from .portals import get_portal
 
@@ -44,7 +45,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class VeoliaAPI:
-    """Veolia API client"""
+    """Veolia API client."""
 
     def __init__(
         self,
@@ -89,8 +90,8 @@ class VeoliaAPI:
         self,
         url: str,
         method: str,
-        params: dict | None = None,
-        json_data: dict | None = None,
+        params: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | None = None,
         is_login: bool = False,
     ) -> aiohttp.ClientResponse:
         """Make an HTTP request with support for params, headers and JSON body."""
@@ -138,7 +139,7 @@ class VeoliaAPI:
             safe_json,
         )
 
-        kwargs: dict = {
+        kwargs: dict[str, Any] = {
             "headers": req_headers,
             "allow_redirects": False,
             # Per-request timeout: the injected shared session (e.g. the Home
@@ -184,7 +185,7 @@ class VeoliaAPI:
         return response
 
     async def login(self) -> bool:
-        """Login to the Veolia API"""
+        """Login to the Veolia API."""
         _LOGGER.info("Logging in...")
         email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
 
@@ -221,7 +222,7 @@ class VeoliaAPI:
             await self.login()
 
     async def _get_access_token(self) -> None:
-        """Request the access token"""
+        """Request the access token."""
         token_url = f"{LOGIN_URL}"
         _LOGGER.debug("Requesting access token...")
         json_payload = {
@@ -264,7 +265,7 @@ class VeoliaAPI:
         _LOGGER.debug("OK - Access token retrieved")
 
     async def _get_client_data(self) -> None:
-        """Get the account data"""
+        """Get the account data."""
         _LOGGER.debug("Fetching user & billing data...")
         url = f"{self._backend_url}/espace-client?type-front={TYPE_FRONT}"
         response = await self._send_request(url=url, method=GET)
@@ -353,11 +354,11 @@ class VeoliaAPI:
         year: int,
         month: int | None = None,
     ) -> list[dict[str, Any]]:
-        """Get the water consumption data"""
-        date_debut = datetime.strptime(
-            self.account_data.date_debut_abonnement,
-            "%Y-%m-%d",
-        ).replace(tzinfo=UTC)
+        """Get the water consumption data."""
+        date_debut_str = self.account_data.date_debut_abonnement
+        if not date_debut_str:
+            raise VeoliaAPIGetDataError("Subscription start date unknown, login first")
+        date_debut = datetime.strptime(date_debut_str, "%Y-%m-%d").replace(tzinfo=UTC)
         if month is not None:
             requested_date = datetime(year, month, 1, tzinfo=UTC)
         else:
@@ -404,10 +405,11 @@ class VeoliaAPI:
                 f"call to= consommations failed with http status= {response.status}",
             )
         _LOGGER.debug("OK - Fetch done for %s-%s", year, month)
-        return await response.json()
+        return cast("list[dict[str, Any]]", await response.json())
 
     async def get_alerts_settings(self) -> AlertSettings:
-        """Get the consumption alerts
+        """Get the consumption alerts.
+
         Response example:
         {
             "seuils": {
@@ -428,7 +430,7 @@ class VeoliaAPI:
                     }
                 }
             }
-        }
+        }.
         """
         await self._check_token()
 
@@ -495,8 +497,8 @@ class VeoliaAPI:
             f"call to= alertes failed with http status= {response.status}",
         )
 
-    async def _get_mensualisation_plan(self) -> dict:
-        """Get the plan de mensualisation for the given abonnement ID"""
+    async def _get_mensualisation_plan(self) -> dict[str, Any]:
+        """Get the plan de mensualisation for the given abonnement ID."""
         _LOGGER.debug("Getting mensualisation plan...")
         url = f"{self._backend_url}/abonnements/{self.account_data.id_abonnement}/facturation/mensualisation/plan"
 
@@ -508,7 +510,7 @@ class VeoliaAPI:
 
         if response.status == HTTPStatus.OK:
             _LOGGER.debug("OK - Mensualisation plan received")
-            return await response.json()
+            return cast("dict[str, Any]", await response.json())
 
         _LOGGER.warning(
             "call to mensualisation/plan failed with HTTP status %s",
@@ -545,7 +547,7 @@ class VeoliaAPI:
         async def _sem_task(
             task_coro: Coroutine[Any, Any, list[dict[str, Any]]],
         ) -> list[dict[str, Any]]:
-            """Semaphore coro"""
+            """Semaphore coro."""
             async with semaphore:
                 return await task_coro
 
@@ -574,12 +576,12 @@ class VeoliaAPI:
         _LOGGER.info("OK - All data fetched for range")
 
     async def set_alerts_settings(self, alert_settings: AlertSettings) -> bool:
-        """Set the consumption alerts"""
+        """Set the consumption alerts."""
         await self._check_token()
 
         _LOGGER.debug("Setting alerts params...")
         url = f"{self._backend_url}/alertes/{self.account_data.numero_pds}"
-        payload = {}
+        payload: dict[str, Any] = {}
 
         if alert_settings.daily_enabled:
             payload["alerte_journaliere"] = {

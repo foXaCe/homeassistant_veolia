@@ -10,7 +10,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-from homeassistant.helpers.entity import EntityCategory
+from homeassistant.const import EntityCategory
 
 from .entity import VeoliaBaseEntity
 from .helpers import is_unoccupied_mode

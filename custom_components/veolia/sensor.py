@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
     from .data import VeoliaConfigEntry
-    from .model import VeoliaModel
+    from .model import StatisticsRow, VeoliaModel
 
 PARALLEL_UPDATES = 0
 
@@ -54,7 +54,7 @@ class VeoliaSensorEntityDescription(SensorEntityDescription):
 
     value_fn: Callable[[VeoliaModel], Any]
     attributes_fn: Callable[[VeoliaModel], dict[str, Any]] | None = None
-    statistics_fn: Callable[[VeoliaModel], list[dict]] | None = None
+    statistics_fn: Callable[[VeoliaModel], list[StatisticsRow]] | None = None
     statistics_unit: str | None = None
 
 

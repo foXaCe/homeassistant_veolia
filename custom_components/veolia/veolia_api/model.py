@@ -1,11 +1,15 @@
 """Veolia API model."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
 class AlertSettings:
     """Alert settings.
+
     daily_enabled: bool = To enable or disable daily alerts
     daily_threshold: int = Daily threshold in liters (minimum 100)
     daily_notif_email: bool = To enable or disable daily
@@ -15,7 +19,7 @@ class AlertSettings:
     monthly_threshold: int = Monthly threshold in M3 (minimum 1)
     monthly_notif_email: bool = To enable or disable monthly
         alerts by email (Can't be disabled)
-    monthly_notif_sms: bool = To enable or disable monthly alerts by SMS
+    monthly_notif_sms: bool = To enable or disable monthly alerts by SMS.
     """
 
     daily_enabled: bool
@@ -54,7 +58,7 @@ class VeoliaAccountData:
     emplacement_compteur: str | None = None
     libelle_contrat: str | None = None
     statut: str | None = None
-    monthly_consumption: list[dict] | None = None
-    daily_consumption: list[dict] | None = None
+    monthly_consumption: list[dict[str, Any]] | None = None
+    daily_consumption: list[dict[str, Any]] | None = None
     alert_settings: AlertSettings | None = None
-    billing_plan: dict | None = None
+    billing_plan: dict[str, Any] | None = None

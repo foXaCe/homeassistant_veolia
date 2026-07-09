@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
-from homeassistant.components.recorder.statistics import (
+from homeassistant.components.recorder.models import (
+    StatisticData,
     StatisticMeanType,
     StatisticMetaData,
-    async_import_statistics,
 )
+from homeassistant.components.recorder.statistics import async_import_statistics
 from homeassistant.util.unit_conversion import VolumeConverter
 
 from .const import LOGGER
@@ -16,11 +17,13 @@ from .const import LOGGER
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
+    from .model import StatisticsRow
+
 
 def import_volume_statistics(
     hass: HomeAssistant,
     statistic_id: str,
-    stats: list[dict],
+    stats: list[StatisticsRow],
     unit: str,
 ) -> None:
     """Import cumulative volume statistics rows for an entity.
@@ -41,4 +44,4 @@ def import_volume_statistics(
         unit_of_measurement=unit,
     )
     LOGGER.debug("Importing %d statistics rows for %s", len(stats), statistic_id)
-    async_import_statistics(hass, metadata, stats)
+    async_import_statistics(hass, metadata, cast("list[StatisticData]", stats))

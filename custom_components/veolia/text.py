@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from homeassistant.components.text import TextEntity, TextEntityDescription
-from homeassistant.helpers.entity import EntityCategory
+from homeassistant.const import EntityCategory
 
 from .entity import VeoliaBaseEntity
 from .helpers import is_unoccupied_mode

@@ -7,8 +7,6 @@ license = { file = "LICENSE" }
 
 [tool.ruff]
 required-version = ">=0.6.8"
-# Client Veolia vendoré (fork externe) — non soumis au style de l'intégration.
-extend-exclude = ["custom_components/veolia/veolia_api"]
 
 [tool.ruff.lint]
 select = [
@@ -188,7 +186,7 @@ max-complexity = 25
 property-decorators = ["propcache.cached_property"]
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
