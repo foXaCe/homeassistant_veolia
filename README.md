@@ -1,32 +1,19 @@
 <a href=""><img src="images/veolialogo.png"></a>
 
 [![GitHub Release][releases-shield]][releases]
-[![HACS Default](https://img.shields.io/badge/HACS-Default-blue.svg?style=for-the-badge)](https://hacs.xyz/docs/faq/custom_repositories)
+[![hacs][hacsbadge]][hacs]
+[![CI][ci-shield]][ci]
+[![Hassfest][hassfest-shield]][hassfest]
+[![License][license-shield]](LICENSE)
+[![Project Maintenance][maintainer-shield]][maintainer]
 
-> [!IMPORTANT]
->
-> ## Message important concernant l’avenir de cette intégration :
->
-> Ayant récemment déménagé dans une zone non couverte par Veolia, je n’ai désormais plus accès à un compte Veolia actif.
->
-> Cela rend difficile le maintien, les tests et l’évolution du projet dans de bonnes conditions.
-> Je continuerai autant que possible à assurer le support, les corrections de bugs et la maintenance générale.
->
-> Toutefois, pour garantir la pérennité de l’intégration et permettre son évolution, je recherche un ou plusieurs développeurs motivés pouvant m’aider à la faire avancer, tester les nouveautés et contribuer aux futures améliorations.
->
-> Si vous êtes intéressé(e) pour rejoindre le développement ou simplement donner un coup de main sur certaines fonctionnalités, n’hésitez pas à ouvrir une issue ou à me contacter. Toute contribution, même modeste, est la bienvenue.
->
-> Merci d’avance pour votre aide et votre engagement ! 💙
+_Intégration Home Assistant pour Veolia Eau (compatible avec https://www.eau.veolia.fr)._
 
-> ### Portails compatibles : voir [PORTALS.md](PORTALS.md)
+> ### Portails compatibles : voir [Portails Veolia supportés](#portails-veolia-supportés)
 >
 > ### N'est PAS compatible avec : https://service.eau.veolia.fr & https://espace-client.vedif.eau.veolia.fr
 
 ---
-
-<p align="center">
-  <a href="https://www.buymeacoffee.com/jezza" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-yellow.png" alt="Buy Me A Coffee" height="80" width="320"></a>
-</p>
 
 ## Informations disponibles
 
@@ -37,61 +24,61 @@
 | `sensor`        | Affiche les informations de l'API Veolia            |
 | `switch`        | Switch d'activation/désactivation des alertes conso |
 | `text`          | Saisie des valeurs de réglages des alertes          |
-| `binary_sensor` | Affiche l'états des alertes conso                   |
+| `binary_sensor` | Affiche l'état des alertes conso                    |
 
 ### Données disponibles
 
 - Consommation d'eau (journalière, mensuelle)
 - Index de consommation d'eau
 - Seuils d'alertes de consommation d'eau
-- Etat des alertes de consommation d'eau
+- État des alertes de consommation d'eau
 - Date de la dernière relève de consommation d'eau
 
 > #### **Note :** Les données de l'intégration sont mises à jour toutes les 12h.
 
-### Capteurs :
+### Capteurs
 
-<a href=""><img src="images/capteurs.png"></a>
+<a href=""><img src="images/capteurs.png" alt="Capteurs Veolia dans Home Assistant"></a>
 
-### Contrôles :
+### Contrôles
 
-<a href=""><img src="images/controles.png"></a>
+<a href=""><img src="images/controles.png" alt="Contrôles des alertes Veolia"></a>
 
 ### Configuration des alertes
 
 L'intégration Veolia permet de configurer des alertes de consommation d'eau pour surveiller votre utilisation
 quotidienne et mensuelle, et même pour détecter une fuite si vous n'êtes pas chez vous.
 
-Les alertes sont activées ou désactivées, en renseignant les champs seuils d'alertes (0 = désactivé, >0 = activé)
+Les alertes sont activées ou désactivées en renseignant les champs seuils d'alertes (0 = désactivé, >0 = activé).
 
 Il existe 3 types d'alertes :
 
 - Alerte journalière
-  - L'alerte journalière est une alerte qui se déclenche si votre consommation d'eau quotidienne dépasse un certain seuil **cette valeur est en litre, le minimum est de 100 litres.**
+  - L'alerte journalière se déclenche si votre consommation d'eau quotidienne dépasse un certain seuil **cette valeur est en litres, le minimum est de 100 litres.**
 - Alerte mensuelle
-  - L'alerte mensuelle est une alerte qui se déclenche si votre consommation d'eau mensuelle dépasse un certain seuil **cette valeur est en metre cubes, le minimum est de 1m3**.
-- Alerte logement "vide"
-  - L'alerte logement vide est une alerte qui se déclenche si une consommation d'eau est détectée alors que vous n'êtes pas chez vous.
+  - L'alerte mensuelle se déclenche si votre consommation d'eau mensuelle dépasse un certain seuil **cette valeur est en mètres cubes, le minimum est de 1 m³**.
+- Alerte logement « vide »
+  - L'alerte logement vide se déclenche si une consommation d'eau est détectée alors que vous n'êtes pas chez vous.
 
 Informations supplémentaires :
 
-> Les notifications d'alerte sont envoyées par Veolia directement par email et par SMS (aux coordonnées de contact renseigné dans votre compte Veolia).
+> Les notifications d'alerte sont envoyées par Veolia directement par email et par SMS (aux coordonnées de contact renseignées dans votre compte Veolia).
 
-> Il n'est pas possible de désactiver les notifications d'alerte par email, mais vous pouvez choisir d'activer ou pas les notifications par SMS, uniquement si un seuil est renseigné.
+> Il n'est pas possible de désactiver les notifications d'alerte par email, mais vous pouvez choisir d'activer ou non les notifications par SMS, uniquement si un seuil est renseigné.
 
 ### Visualisation des données de consommation
 
-L'intégration Veolia permet de visualiser les données de consommation d'eau en natif dans Home Assistant. Elle re-télécharge l'historique du mois en cours depuis Véolia et met à jour la base de données Home Assistant.
+L'intégration Veolia permet de visualiser les données de consommation d'eau en natif dans Home Assistant. Elle re-télécharge l'historique du mois en cours depuis Veolia et met à jour la base de données Home Assistant.
 
-> Pour visualiser les informations à la bonne date, il est nécéssaire d'utiliser le sensor de consommation journalière (l'utilisation du sensor index compteur générera un décalage dans les dates)
+> Pour visualiser les informations à la bonne date, il est nécessaire d'utiliser le sensor de consommation journalière (l'utilisation du sensor index compteur générera un décalage dans les dates).
 
-#### 1. Ajout au dashboard energie de Home Assistant
+#### 1. Ajout au dashboard énergie de Home Assistant
 
-<a href=""><img src="images/dashboard_eau.png"></a>
+<a href=""><img src="images/dashboard_eau.png" alt="Dashboard énergie eau"></a>
 
-Pour ajouter la consommation d'eau au dashboard energie de Home Assistant, allez `Energie` -> crayon en haut à droite -> `Eau` -> `Ajouter une consommation d'eau` -> Dans le champ `Consommation d'eau` choissisez `sensor.veolia_xxx_conso_journaliere`
+Pour ajouter la consommation d'eau au dashboard énergie de Home Assistant, allez dans `Énergie` -> crayon en haut à droite -> `Eau` -> `Ajouter une consommation d'eau` -> Dans le champ `Consommation d'eau` choisissez `sensor.veolia_xxx_conso_journaliere`
 
-<a href=""><img src="images/consommation.png"></a>
+<a href=""><img src="images/consommation.png" alt="Consommation d'eau"></a>
 
 #### 2. Ajout d'une carte de consommation d'eau journalière
 
@@ -101,16 +88,16 @@ Pour ajouter la consommation d'eau au dashboard energie de Home Assistant, allez
 >
 > C'est une contrainte technique de Veolia, PAS UN BUG !
 >
-> Veolia traite et publie les données de consommation avec un délai de minimum 24 hrs, parfois beacoup plus en fonction de la fréquence de collecte de la zone.
+> Veolia traite et publie les données de consommation avec un délai de minimum 24 h, parfois beaucoup plus en fonction de la fréquence de collecte de la zone.
 > L'intégration ne peut retourner que ce que l'API Veolia expose, elle ne peut pas récupérer des données que Veolia n'a pas encore publiées...
 >
 > Le seul usage de ce sensor est l'usage avec une carte graphique comme décrit ci-dessous :
 
-<a href=""><img src="images/historique.png"></a>
+<a href=""><img src="images/historique.png" alt="Historique de consommation"></a>
 
-Pour ajouter la carte de consommation d'eau journalière, sur votre dashboard, cliquez sur `Ajouter une carte` puis selectionner `Graphique des statistiques` et choissisez l'entité `sensor.veolia_xxx_conso_journaliere`, configurer la carte comme l'exemple ci-dessous :
+Pour ajouter la carte de consommation d'eau journalière, sur votre dashboard, cliquez sur `Ajouter une carte` puis sélectionnez `Graphique des statistiques` et choisissez l'entité `sensor.veolia_xxx_conso_journaliere`, configurez la carte comme l'exemple ci-dessous :
 
-<a href=""><img src="images/config_carte.png"></a>
+<a href=""><img src="images/config_carte.png" alt="Configuration de la carte"></a>
 
 > #### **Note :** La carte Graphique des statistiques ne fonctionnera qu'avec le sensor `sensor.veolia_xxx_conso_journaliere`
 
@@ -118,7 +105,7 @@ Pour ajouter la carte de consommation d'eau journalière, sur votre dashboard, c
 
 Avant d'installer l'intégration, vous pouvez vérifier si votre commune est prise en charge en interrogeant l'API Veolia depuis votre navigateur ou avec `curl` :
 
-```
+```text
 https://prd-ael-sirius-refcommunes.istefr.fr/communes-nationales?q=VOTRE_CODE_POSTAL
 ```
 
@@ -131,70 +118,75 @@ Dans le résultat JSON, cherchez votre commune et examinez le champ `type_commun
 | `REDIRIGE` (hostname inconnu) | ❌ Non supporté — portail non encore intégré |
 | `NON_DESSERVIE`               | ❌ Veolia ne dessert pas cette commune       |
 
-# Portails Veolia supportés (04/2026)
+## Portails Veolia supportés
 
 | Hostname                          | Description               |
 | --------------------------------- | ------------------------- |
 | `eau.veolia.fr`                   | Veolia France (national)  |
 | `eaudetm.monespace.eau.veolia.fr` | Eau de Toulouse Métropole |
 
-Votre portail n'est pas géré? Voir [CONTRIBUTING.md](CONTRIBUTING.md#adding-a-portal)
+Votre portail n'est pas géré ? Voir [CONTRIBUTING.md](CONTRIBUTING.md#ajouter-un-portail)
 
 ## Installation
 
 ### Via [HACS](https://hacs.xyz/) (recommandé)
 
-**Cliquez ici:**
+**Cliquez ici :**
 
-[![Open your Home Assistant instance and open the repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg?style=flat-square)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Jezza34000&repository=homeassistant_veolia&category=integration)
+[![Open your Home Assistant instance and open the repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg?style=flat-square)](https://my.home-assistant.io/redirect/hacs_repository/?owner=foXaCe&repository=homeassistant_veolia&category=integration)
 
-**ou suivez ces étapes:**
+**ou suivez ces étapes :**
 
 1. Ouvrez HACS (Home Assistant Community Store)
 2. Cliquez sur les trois points en haut à droite
-3. Cliquez sur `Dépôts personnalisées`
-4. Dans le champ `Dépôt` entrez https://github.com/Jezza34000/homeassistant_veolia/
+3. Cliquez sur `Dépôts personnalisés`
+4. Dans le champ `Dépôt` entrez https://github.com/foXaCe/homeassistant_veolia/
 5. Dans le champ `Type` sélectionnez `Intégration`
 6. Cliquez sur `Ajouter`
 7. Recherchez `Veolia` dans la liste des intégrations
 8. Installez l'intégration
 9. Redémarrez Home Assistant
-10. Ouvrez paramètres -> intégrations -> ajouter une intégration -> recherchez `Veolia`
+10. Ouvrez Paramètres -> Intégrations -> Ajouter une intégration -> recherchez `Veolia`
 11. Suivez les instructions pour configurer l'intégration
 
 ### Manuellement
 
 1. Copiez le dossier `custom_components/veolia` dans le dossier `custom_components` de votre configuration Home Assistant.
 2. Redémarrez Home Assistant
-3. Ouvrez paramètres -> intégrations -> ajouter une intégration -> recherchez `Veolia`
+3. Ouvrez Paramètres -> Intégrations -> Ajouter une intégration -> recherchez `Veolia`
 4. Suivez les instructions pour configurer l'intégration
 
 ## Bug et demande de fonctionnalités
 
-- [Cliquez-ici](https://github.com/Jezza34000/homeassistant_veolia/issues)
+- [Ouvrir une issue](https://github.com/foXaCe/homeassistant_veolia/issues)
 
 ## API Veolia
 
-Cette intégration utilise mon client API Veolia disponible ici : [veolia-api](https://github.com/Jezza34000/veolia-api).
+Cette intégration utilise le client API Python [veolia-api](https://github.com/Jezza34000/veolia-api).
+
+## Contribuer
+
+Voir [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Credits
 
-Le modèle de code de cette intégration à principalement été tiré du blueprint de @Ludeeus. Merci à lui pour son travail.
+- [@Jezza34000](https://github.com/Jezza34000) — auteur original de cette intégration et du client [veolia-api](https://github.com/Jezza34000/veolia-api).
+- [@Ludeeus](https://github.com/ludeeus) — le modèle de code de cette intégration a principalement été tiré de son blueprint.
 
-[![GitHub Activity][commits-shield]][commits]
-[![License][license-shield]](LICENSE)
-![Project Maintenance][maintenance-shield]
+## License
 
----
+[MIT](LICENSE)
 
-<!---->
+<!-- Badges links -->
 
+[releases-shield]: https://img.shields.io/github/v/release/foXaCe/homeassistant_veolia.svg?style=for-the-badge
+[releases]: https://github.com/foXaCe/homeassistant_veolia/releases
 [hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
 [hacs]: https://hacs.xyz
-[releases-shield]: https://img.shields.io/github/v/release/Jezza34000/homeassistant_veolia.svg?style=for-the-badge
-[releases]: https://github.com/Jezza34000/homeassistant_veolia/releases
-[commits-shield]: https://img.shields.io/github/commit-activity/y/ludeeus/integration_blueprint.svg?style=for-the-badge
-[commits]: https://github.com/Jezza34000/homeassistant_veolia/commits/main
-[license-shield]: https://img.shields.io/github/license/ludeeus/integration_blueprint.svg?style=for-the-badge
-[maintenance-shield]: https://img.shields.io/badge/maintainer-%20%40Jezza34000-blue.svg?style=for-the-badge
-[sensorsimg]: images/entities.png
+[ci-shield]: https://img.shields.io/github/actions/workflow/status/foXaCe/homeassistant_veolia/ci.yml?branch=main&style=for-the-badge&label=CI
+[ci]: https://github.com/foXaCe/homeassistant_veolia/actions/workflows/ci.yml
+[hassfest-shield]: https://img.shields.io/github/actions/workflow/status/foXaCe/homeassistant_veolia/hassfest.yml?branch=main&style=for-the-badge&label=hassfest
+[hassfest]: https://github.com/foXaCe/homeassistant_veolia/actions/workflows/hassfest.yml
+[license-shield]: https://img.shields.io/github/license/foXaCe/homeassistant_veolia.svg?style=for-the-badge
+[maintainer-shield]: https://img.shields.io/badge/maintainer-%40foXaCe-blue.svg?style=for-the-badge
+[maintainer]: https://github.com/foXaCe

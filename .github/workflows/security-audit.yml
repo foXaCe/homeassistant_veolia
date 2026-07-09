@@ -1,0 +1,74 @@
+name: Security audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: security-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-audit:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install pip-audit
+        run: pipx install pip-audit
+
+      - name: Audit manifest.json requirements
+        run: |
+          jq -r '.requirements[]' custom_components/veolia/manifest.json > /tmp/manifest_reqs.txt
+          pip-audit --requirement /tmp/manifest_reqs.txt --strict
+
+      - name: Audit requirements.txt
+        run: pip-audit --requirement requirements.txt --strict
+
+  # Pas de job OSV-Scanner : sans lockfile, osv-scanner résout les dépendances
+  # transitives à leur version MINIMALE et remonte des CVE que pip n'installerait
+  # jamais (faux positifs permanents). La couverture CVE réelle est assurée par
+  # pip-audit (résolution identique à pip), Renovate vulnerabilityAlerts,
+  # dependency-review et CodeQL.
+
+  secret-scan:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure

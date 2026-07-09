@@ -1,5 +1,5 @@
-feature: ["feature/*", "feat/*"]
-enhancement: enhancement/*
-bug: fix/*
-breaking: breaking/*
-documentation: doc/*
+enhancement: ["feature/*", "feat/*", "enhancement/*"]
+bug: ["fix/*", "bugfix/*"]
+breaking change: breaking/*
+documentation: ["doc/*", "docs/*"]
+dependencies: ["deps/*", "renovate/*"]

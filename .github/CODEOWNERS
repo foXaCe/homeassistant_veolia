@@ -1,1 +1,11 @@
-@Jezza34000
+# Default owner for everything in the repo
+* @foXaCe
+
+# Workflows
+/.github/ @foXaCe
+
+# Integration code
+/custom_components/veolia/ @foXaCe
+
+# Translations
+/custom_components/veolia/translations/ @foXaCe

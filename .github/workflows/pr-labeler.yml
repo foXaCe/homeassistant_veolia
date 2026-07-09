@@ -1,11 +1,22 @@
 name: PR Labeler
+
 on:
   pull_request:
     types: [opened]
 
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-labeler-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pr-labeler:
+    name: Label PR from branch name
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: TimonVS/pr-labeler-action@f9c084306ce8b3f488a8f3ee1ccedc6da131d1af # Version 5.0.0
         env:
