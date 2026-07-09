@@ -52,7 +52,6 @@ jobs:
         with:
           scan-args: |
             --recursive
-            --skip-git
             ./
 
   secret-scan:
