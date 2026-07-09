@@ -7,6 +7,9 @@
         "description": "Afin de tester la compatibilité de votre compte Veolia avec cette intégration, veuillez saisir votre code postal :",
         "data": {
           "postal_code": "Code postal"
+        },
+        "data_description": {
+          "postal_code": "Le code postal de l'adresse desservie par Veolia."
         }
       },
       "select_commune": {
@@ -14,14 +17,33 @@
         "description": "",
         "data": {
           "commune": "Veuillez sélectionner votre commune dans la liste ci-dessous :"
+        },
+        "data_description": {
+          "commune": "La commune détermine le portail Veolia qui dessert votre compte."
         }
       },
       "credentials": {
         "title": "Informations d'identification",
-        "description": "Bonne nouvelle, votre compte Veolia fonctionne avec cette intégration. Veuillez entrer vos informations de connexion Veolia :",
+        "description": "Bonne nouvelle, votre compte Veolia fonctionne avec cette intégration. Veuillez saisir vos informations de connexion Veolia :",
         "data": {
           "username": "Nom d'utilisateur",
           "password": "Mot de passe"
+        },
+        "data_description": {
+          "username": "L'adresse e-mail de votre compte Veolia.",
+          "password": "Le mot de passe de votre compte Veolia."
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigurer Veolia",
+        "description": "Mettez à jour les identifiants de votre compte Veolia :",
+        "data": {
+          "username": "Nom d'utilisateur",
+          "password": "Mot de passe"
+        },
+        "data_description": {
+          "username": "L'adresse e-mail de votre compte Veolia.",
+          "password": "Le mot de passe de votre compte Veolia."
         }
       },
       "reauth_confirm": {
@@ -29,19 +51,25 @@
         "description": "Les identifiants de {username} ne sont plus valides. Veuillez saisir le nouveau mot de passe :",
         "data": {
           "password": "Mot de passe"
+        },
+        "data_description": {
+          "password": "Le nouveau mot de passe de votre compte Veolia."
         }
       }
     },
     "error": {
       "invalid_credentials": "Nom d'utilisateur ou mot de passe incorrect",
       "unknown": "Impossible de se connecter, consultez les journaux pour plus d'informations",
-      "commune_not_supported": "Désolé votre compte Veolia n'est pas supportée par cette intégration. Vous devez attendre la migration vers le nouveau site (cette étape dépend uniquement de Veolia) Une fois la migration effectuée, veuillez réessayer.",
+      "cannot_connect": "Impossible de joindre le service de recherche des communes Veolia",
+      "commune_not_supported": "Désolé, votre compte Veolia n'est pas pris en charge par cette intégration. Vous devez attendre la migration vers le nouveau site (cette étape dépend uniquement de Veolia). Une fois la migration effectuée, veuillez réessayer.",
       "no_communes_found": "Aucune commune trouvée pour ce code postal",
       "commune_not_veolia": "Veolia ne fournit pas d'eau dans cette commune"
     },
     "abort": {
       "already_configured": "Ce compte est déjà configuré",
-      "reauth_successful": "La ré-authentification a réussi"
+      "reauth_successful": "La ré-authentification a réussi",
+      "reconfigure_successful": "La reconfiguration a réussi",
+      "unique_id_mismatch": "Ces identifiants correspondent à un autre compte Veolia"
     }
   },
   "options": {
@@ -111,7 +139,7 @@
         "name": "Seuil alerte journalière (en L)"
       },
       "monthly_threshold_text": {
-        "name": "Seuil alerte mensuelle (en M3)"
+        "name": "Seuil alerte mensuelle (en m³)"
       }
     },
     "binary_sensor": {

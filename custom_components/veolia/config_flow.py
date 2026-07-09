@@ -1,16 +1,19 @@
-"""Config flow for veolia integration."""
+"""Config flow for the Veolia integration."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import aiohttp
 import voluptuous as vol
 
-from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlowResult, OptionsFlowWithReload
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlowWithReload,
+)
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -18,11 +21,22 @@ from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
 )
 
 from .const import (
+    COMMUNE_TYPE_DIRECT,
+    COMMUNE_TYPE_NOT_SERVED,
+    COMMUNE_TYPE_REDIRECTED,
     COMMUNES_LOOKUP_URL,
+    CONF_COMMUNE,
     CONF_PORTAL_URL,
+    CONF_POSTAL_CODE,
     DEFAULT_SCAN_INTERVAL_HOURS,
     DOMAIN,
     LOGGER,
@@ -31,26 +45,71 @@ from .veolia_api import VeoliaAPI
 from .veolia_api.exceptions import VeoliaAPIInvalidCredentialsError
 from .veolia_api.portals import VEOLIA_PORTAL_CLIENTS
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
-class VeoliaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
+STEP_USER_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_POSTAL_CODE): TextSelector(
+            TextSelectorConfig(type=TextSelectorType.TEXT)
+        ),
+    }
+)
+
+STEP_CREDENTIALS_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_USERNAME): TextSelector(
+            TextSelectorConfig(type=TextSelectorType.EMAIL, autocomplete="username")
+        ),
+        vol.Required(CONF_PASSWORD): TextSelector(
+            TextSelectorConfig(
+                type=TextSelectorType.PASSWORD, autocomplete="current-password"
+            )
+        ),
+    }
+)
+
+STEP_REAUTH_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_PASSWORD): TextSelector(
+            TextSelectorConfig(
+                type=TextSelectorType.PASSWORD, autocomplete="current-password"
+            )
+        ),
+    }
+)
+
+
+class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
     """Config flow for veolia."""
 
     VERSION = 2
 
     def __init__(self) -> None:
         """Initialize."""
-        self._errors = {}
-        self._postal_code = None
-        self._communes = []
+        self._postal_code: str | None = None
+        self._communes: list[dict[str, Any]] = []
         self._portal_url: str | None = None
 
     @staticmethod
     @callback
     def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry,
+        config_entry: ConfigEntry,
     ) -> VeoliaOptionsFlowHandler:
         """Create the options flow handler."""
         return VeoliaOptionsFlowHandler()
+
+    async def _async_fetch_communes(self, postal_code: str) -> list[dict[str, Any]]:
+        """Look up the communes served for a postal code."""
+        session = async_get_clientsession(self.hass)
+        async with session.get(
+            COMMUNES_LOOKUP_URL,
+            params={"q": postal_code},
+            timeout=aiohttp.ClientTimeout(total=30),
+        ) as response:
+            communes: list[dict[str, Any]] = await response.json()
+        LOGGER.debug("Communes found for %s: %s", postal_code, communes)
+        return communes
 
     async def _async_validate(
         self, username: str, password: str, portal_url: str | None
@@ -76,75 +135,83 @@ class VeoliaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             return None, "unknown"
         return None, "invalid_credentials"
 
-    async def async_step_user(self, user_input=None) -> dict:
-        """Handle a flow initialized by the user."""
-        self._errors = {}
-
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for the postal code and check portal eligibility."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            self._postal_code = user_input["postal_code"]
-            return await self.async_step_select_commune()
+            self._postal_code = user_input[CONF_POSTAL_CODE]
+            try:
+                self._communes = await self._async_fetch_communes(self._postal_code)
+            except (aiohttp.ClientError, TimeoutError):
+                LOGGER.debug("Commune lookup failed", exc_info=True)
+                errors["base"] = "cannot_connect"
+            else:
+                if self._communes:
+                    return await self.async_step_select_commune()
+                errors["base"] = "no_communes_found"
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema({vol.Required("postal_code"): str}),
-            errors=self._errors,
+            data_schema=STEP_USER_SCHEMA,
+            errors=errors,
         )
 
-    async def async_step_select_commune(self, user_input=None) -> dict:
+    async def async_step_select_commune(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle the selection of a commune."""
-        LOGGER.debug("Check city postal to for integration compatibility")
+        errors: dict[str, str] = {}
         if user_input is not None:
-            selected_commune = next(
+            selected = next(
                 (
                     commune
                     for commune in self._communes
-                    if commune["libelle"] == user_input["commune"]
+                    if commune.get("libelle") == user_input[CONF_COMMUNE]
                 ),
                 None,
             )
-            if selected_commune["type_commune"] == "NON_REDIRIGE":
+            commune_type = selected.get("type_commune") if selected else None
+            if commune_type == COMMUNE_TYPE_DIRECT:
                 self._portal_url = None
                 return await self.async_step_credentials()
-
-            if selected_commune["type_commune"] == "REDIRIGE":
-                url_redirection = selected_commune.get("url_redirection", "")
+            if commune_type == COMMUNE_TYPE_REDIRECTED:
+                url_redirection = (
+                    selected.get("url_redirection", "") if selected else ""
+                )
                 hostname = urlparse(url_redirection).hostname or ""
                 if hostname in VEOLIA_PORTAL_CLIENTS:
                     self._portal_url = hostname
                     return await self.async_step_credentials()
-                self._errors["base"] = "commune_not_supported"
-            elif selected_commune["type_commune"] == "NON_DESSERVIE":
-                self._errors["base"] = "commune_not_veolia"
+                errors["base"] = "commune_not_supported"
+            elif commune_type == COMMUNE_TYPE_NOT_SERVED:
+                errors["base"] = "commune_not_veolia"
             else:
-                self._errors["base"] = "commune_not_supported"
+                errors["base"] = "commune_not_supported"
 
-        LOGGER.debug("Fetching communes for postal code %s", self._postal_code)
-        session = async_get_clientsession(self.hass)
-        async with session.get(
-            COMMUNES_LOOKUP_URL,
-            params={"q": self._postal_code},
-            timeout=aiohttp.ClientTimeout(total=30),
-        ) as response:
-            self._communes = await response.json()
-            LOGGER.debug("Communes found: %s", self._communes)
-
-        if not self._communes:
-            self._errors["base"] = "no_communes_found"
-
-        commune_options = {
-            commune["libelle"]: commune["libelle"] for commune in self._communes
-        }
-
+        options = [
+            commune["libelle"] for commune in self._communes if commune.get("libelle")
+        ]
         return self.async_show_form(
             step_id="select_commune",
-            data_schema=vol.Schema({vol.Required("commune"): vol.In(commune_options)}),
-            errors=self._errors,
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_COMMUNE): SelectSelector(
+                        SelectSelectorConfig(
+                            options=options, mode=SelectSelectorMode.DROPDOWN
+                        )
+                    ),
+                }
+            ),
+            errors=errors,
         )
 
-    async def async_step_credentials(self, user_input=None) -> dict:
-        """Handle the input of credentials."""
-        LOGGER.debug("Request credentials")
-        self._errors = {}
+    async def async_step_credentials(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for and validate the Veolia credentials."""
+        errors: dict[str, str] = {}
         if user_input is not None:
             account_id, error = await self._async_validate(
                 user_input[CONF_USERNAME],
@@ -158,19 +225,45 @@ class VeoliaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     title=user_input[CONF_USERNAME],
                     data={**user_input, CONF_PORTAL_URL: self._portal_url},
                 )
-            self._errors["base"] = error
-            return await self._show_credentials_form(user_input)
+            errors["base"] = error
 
-        return await self._show_credentials_form(user_input)
-
-    async def _show_credentials_form(self, user_input) -> dict:
-        """Show the configuration form to input credentials."""
         return self.async_show_form(
             step_id="credentials",
-            data_schema=vol.Schema(
-                {vol.Required(CONF_USERNAME): str, vol.Required(CONF_PASSWORD): str},
+            data_schema=STEP_CREDENTIALS_SCHEMA,
+            errors=errors,
+        )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Allow updating the credentials of an existing entry."""
+        errors: dict[str, str] = {}
+        entry = self._get_reconfigure_entry()
+        if user_input is not None:
+            account_id, error = await self._async_validate(
+                user_input[CONF_USERNAME],
+                user_input[CONF_PASSWORD],
+                entry.data.get(CONF_PORTAL_URL),
+            )
+            if error is None:
+                await self.async_set_unique_id(account_id)
+                self._abort_if_unique_id_mismatch()
+                return self.async_update_reload_and_abort(
+                    entry,
+                    data_updates={
+                        CONF_USERNAME: user_input[CONF_USERNAME],
+                        CONF_PASSWORD: user_input[CONF_PASSWORD],
+                    },
+                )
+            errors["base"] = error
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(
+                STEP_CREDENTIALS_SCHEMA,
+                {CONF_USERNAME: entry.data[CONF_USERNAME]},
             ),
-            errors=self._errors,
+            errors=errors,
         )
 
     async def async_step_reauth(
@@ -183,7 +276,7 @@ class VeoliaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Confirm re-authentication by asking for a new password."""
-        self._errors = {}
+        errors: dict[str, str] = {}
         reauth_entry = self._get_reauth_entry()
         if user_input is not None:
             _, error = await self._async_validate(
@@ -196,12 +289,12 @@ class VeoliaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     reauth_entry,
                     data_updates={CONF_PASSWORD: user_input[CONF_PASSWORD]},
                 )
-            self._errors["base"] = error
+            errors["base"] = error
 
         return self.async_show_form(
             step_id="reauth_confirm",
-            data_schema=vol.Schema({vol.Required(CONF_PASSWORD): str}),
-            errors=self._errors,
+            data_schema=STEP_REAUTH_SCHEMA,
+            errors=errors,
             description_placeholders={CONF_USERNAME: reauth_entry.data[CONF_USERNAME]},
         )
 

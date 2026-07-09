@@ -8,6 +8,15 @@ DOMAIN = "veolia"
 NAME = "Veolia"
 CONF_PORTAL_URL = "portal_url"
 
+# Config flow form keys
+CONF_POSTAL_CODE = "postal_code"
+CONF_COMMUNE = "commune"
+
+# Commune types returned by the communes reference API
+COMMUNE_TYPE_DIRECT = "NON_REDIRIGE"
+COMMUNE_TYPE_REDIRECTED = "REDIRIGE"
+COMMUNE_TYPE_NOT_SERVED = "NON_DESSERVIE"
+
 # Options
 DEFAULT_SCAN_INTERVAL_HOURS = 6
 
