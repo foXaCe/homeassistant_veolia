@@ -5,14 +5,18 @@ from homeassistant.components.recorder.statistics import (
     StatisticMetaData,
     async_import_statistics,
 )
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
-from homeassistant.const import UnitOfVolume
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
+from homeassistant.const import CURRENCY_EURO, UnitOfVolume
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util.unit_conversion import VolumeConverter
 
 from .const import DOMAIN, LOGGER
-from .entity import VeoliaMesurements
+from .entity import VeoliaEntity, VeoliaMesurements
 
 
 async def async_setup_entry(hass, entry, async_add_devices) -> None:
@@ -25,6 +29,9 @@ async def async_setup_entry(hass, entry, async_add_devices) -> None:
         MonthlyConsumption(coordinator, entry),
         AnnualConsumption(coordinator, entry),
         LastDateSensor(coordinator, entry),
+        BalanceSensor(coordinator, entry),
+        MonthlyPaymentSensor(coordinator, entry),
+        NextPaymentSensor(coordinator, entry),
     ]
     async_add_devices(sensors)
 
@@ -346,3 +353,121 @@ class LastDateSensor(CoordinatorEntity, SensorEntity):
     def icon(self) -> str | None:
         """Set icon."""
         return "mdi:calendar"
+
+
+class BalanceSensor(VeoliaEntity):
+    """Account balance sensor (solde)."""
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID to use for this entity."""
+        return f"{self.config_entry.entry_id}_balance"
+
+    @property
+    def translation_key(self) -> str:
+        """Translation key for this entity."""
+        return "balance"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor value."""
+        value = self.coordinator.data.computed.balance
+        LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, value)
+        return value
+
+    @property
+    def device_class(self) -> str:
+        """Return the device_class of the sensor."""
+        return SensorDeviceClass.MONETARY
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the unit_of_measurement of the sensor."""
+        return CURRENCY_EURO
+
+    @property
+    def suggested_display_precision(self) -> int:
+        """Return the suggested display precision."""
+        return 2
+
+    @property
+    def icon(self) -> str | None:
+        """Set icon."""
+        return "mdi:cash"
+
+
+class MonthlyPaymentSensor(VeoliaEntity):
+    """Monthly direct debit amount sensor (mensualité)."""
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID to use for this entity."""
+        return f"{self.config_entry.entry_id}_monthly_payment"
+
+    @property
+    def translation_key(self) -> str:
+        """Translation key for this entity."""
+        return "monthly_payment"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor value."""
+        value = self.coordinator.data.computed.monthly_payment
+        LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, value)
+        return value
+
+    @property
+    def device_class(self) -> str:
+        """Return the device_class of the sensor."""
+        return SensorDeviceClass.MONETARY
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the unit_of_measurement of the sensor."""
+        return CURRENCY_EURO
+
+    @property
+    def suggested_display_precision(self) -> int:
+        """Return the suggested display precision."""
+        return 2
+
+    @property
+    def icon(self) -> str | None:
+        """Set icon."""
+        return "mdi:cash-clock"
+
+
+class NextPaymentSensor(VeoliaEntity):
+    """Next scheduled direct debit date sensor (prochain prélèvement)."""
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID to use for this entity."""
+        return f"{self.config_entry.entry_id}_next_payment"
+
+    @property
+    def translation_key(self) -> str:
+        """Translation key for this entity."""
+        return "next_payment"
+
+    @property
+    def native_value(self):
+        """Return sensor value (next direct debit date)."""
+        value = self.coordinator.data.computed.next_payment_date
+        LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, value)
+        return value
+
+    @property
+    def device_class(self) -> str:
+        """Return the device_class of the sensor."""
+        return SensorDeviceClass.DATE
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return extra state."""
+        return {"amount": self.coordinator.data.computed.next_payment_amount}
+
+    @property
+    def icon(self) -> str | None:
+        """Set icon."""
+        return "mdi:calendar-clock"

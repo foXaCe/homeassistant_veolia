@@ -53,6 +53,15 @@
       },
       "last_consumption_date": {
         "name": "Dernier relevé"
+      },
+      "balance": {
+        "name": "Solde du compte"
+      },
+      "monthly_payment": {
+        "name": "Mensualité"
+      },
+      "next_payment": {
+        "name": "Prochain prélèvement"
       }
     },
     "switch": {

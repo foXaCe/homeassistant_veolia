@@ -42,6 +42,7 @@ class VeoliaAccountData:
     tiers_id: str | None = None
     numero_compteur: str | None = None
     date_debut_abonnement: str | None = None
+    solde: float | None = None
     monthly_consumption: list[dict] | None = None
     daily_consumption: list[dict] | None = None
     alert_settings: AlertSettings | None = None

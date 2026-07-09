@@ -46,6 +46,57 @@ def _find_last_for_date(records: list[dict], d: date) -> dict | None:
     return None
 
 
+def _to_float(value: Any) -> float | None:
+    """Cast to float, None on failure."""
+    try:
+        return float(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _compute_billing(
+    raw: Any, today: date
+) -> tuple[float | None, float | None, date | None, float | None]:
+    """Extract balance and upcoming direct debit from the billing plan.
+
+    Returns (balance, monthly_payment, next_payment_date, next_payment_amount).
+    """
+    balance = _to_float(getattr(raw, "solde", None))
+    monthly_payment: float | None = None
+    next_payment_date: date | None = None
+    next_payment_amount: float | None = None
+    try:
+        schedule = (getattr(raw, "billing_plan", None) or {}).get(
+            "prelevements_echeancier"
+        ) or []
+        upcoming: list[tuple[date, float | None, str]] = []
+        last_amount: float | None = None
+        for item in schedule:
+            raw_date = item.get("date")
+            parsed = None
+            if raw_date:
+                try:
+                    parsed = datetime.fromisoformat(raw_date).date()
+                except ValueError:
+                    parsed = None
+            amount = _to_float(item.get("montant"))
+            if amount is not None:
+                last_amount = amount
+            state = item.get("etat_prelevement", "")
+            if parsed and (state == "WAITING" or parsed >= today):
+                upcoming.append((parsed, amount, state))
+        upcoming.sort(key=lambda x: x[0])
+        if upcoming:
+            next_payment_date, next_payment_amount, _ = upcoming[0]
+        # Mensualité : montant du prochain prélèvement, sinon dernier connu
+        monthly_payment = (
+            next_payment_amount if next_payment_amount is not None else last_amount
+        )
+    except Exception as err:  # noqa: BLE001
+        LOGGER.debug("Unable to compute billing data: %s", err)
+    return balance, monthly_payment, next_payment_date, next_payment_amount
+
+
 @dataclass(slots=True)
 class VeoliaComputed:
     """Veolia computed data."""
@@ -64,6 +115,10 @@ class VeoliaComputed:
     daily_today_liters: int | None
     daily_today_m3: float | None
     daily_today_fiability: str | None
+    balance: float | None
+    monthly_payment: float | None
+    next_payment_date: date | None
+    next_payment_amount: float | None
 
 
 @dataclass(slots=True)
@@ -235,6 +290,9 @@ class VeoliaModel:
             daily_stats_liters = []
             monthly_stats_cubic_meters = []
             index_stats_m3 = []
+        balance, monthly_payment, next_payment_date, next_payment_amount = (
+            _compute_billing(raw, today)
+        )
         comp = VeoliaComputed(
             last_index_m3=last_index_m3,
             last_daily_liters=last_daily_liters,
@@ -250,5 +308,9 @@ class VeoliaModel:
             daily_today_liters=daily_today_liters,
             daily_today_m3=daily_today_m3,
             daily_today_fiability=daily_today_fiability,
+            balance=balance,
+            monthly_payment=monthly_payment,
+            next_payment_date=next_payment_date,
+            next_payment_amount=next_payment_amount,
         )
         return VeoliaModel(raw=raw, computed=comp)

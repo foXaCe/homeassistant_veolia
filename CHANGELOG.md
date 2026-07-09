@@ -9,6 +9,19 @@ Ce fichier est maintenu automatiquement par
 [release-please](https://github.com/googleapis/release-please) à partir des
 conventional commits.
 
+## [Unreleased]
+
+### Added
+
+- Nouveaux capteurs de facturation : **solde du compte** (`sensor` €),
+  **mensualité** (`sensor` €) et **prochain prélèvement** (`sensor` date, avec le
+  montant en attribut), issus des endpoints facturation et mensualisation.
+
+### Security
+
+- Le client vendoré masque désormais l'en-tête `Authorization` (token Bearer) dans
+  les logs de debug (le token n'apparaît plus en clair dans `home-assistant.log`).
+
 ## [2.2.0](https://github.com/foXaCe/homeassistant_veolia/compare/v2.1.0...v2.2.0) (2026-07-09)
 
 ### Added

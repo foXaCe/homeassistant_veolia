@@ -104,12 +104,16 @@ class VeoliaAPI:
         if method == POST:
             req_headers["Content-Type"] = "application/json"
 
+        safe_headers = {**req_headers}
+        if "Authorization" in safe_headers:
+            safe_headers["Authorization"] = "REDACTED"
+
         _LOGGER.debug(
             "Making %s request to %s with params: %s, headers: %s, json: %s",
             method,
             url,
             safe_params,
-            req_headers,
+            safe_headers,
             json_data,
         )
 
@@ -277,6 +281,7 @@ class VeoliaAPI:
 
         facturation_data = await response_facturation.json()
         self.account_data.numero_pds = facturation_data.get("numero_pds")
+        self.account_data.solde = facturation_data.get("solde")
         if not self.account_data.numero_pds:
             raise VeoliaAPIResponseError("numero_pds not found in the response")
 
