@@ -120,10 +120,11 @@ Dans le résultat JSON, cherchez votre commune et examinez le champ `type_commun
 
 ## Portails Veolia supportés
 
-| Hostname                          | Description               |
-| --------------------------------- | ------------------------- |
-| `eau.veolia.fr`                   | Veolia France (national)  |
-| `eaudetm.monespace.eau.veolia.fr` | Eau de Toulouse Métropole |
+| Hostname                          | Description                              |
+| --------------------------------- | ---------------------------------------- |
+| `eau.veolia.fr`                   | Veolia France (national)                 |
+| `eaudetm.monespace.eau.veolia.fr` | Eau de Toulouse Métropole                |
+| `www.ea-pm.fr`                    | Eau de Perpignan Méditerranée Métropole  |
 
 Votre portail n'est pas géré ? Voir [CONTRIBUTING.md](CONTRIBUTING.md#ajouter-un-portail)
 

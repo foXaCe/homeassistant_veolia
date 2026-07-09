@@ -6,7 +6,6 @@ from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from dateutil.relativedelta import relativedelta
-from veolia_api import VeoliaAPI
 from veolia_api.exceptions import VeoliaAPIError
 
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
@@ -15,9 +14,11 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
+from .api import PortalVeoliaAPI
 from .const import CONF_PORTAL_URL, DOMAIN, LOGGER
 from .data import VeoliaConfigEntry
 from .model import VeoliaModel
+from .portals import get_backend_url
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -41,11 +42,13 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator):
         )
         LOGGER.debug("Initializing client VeoliaAPI")
 
-        self.client_api = VeoliaAPI(
+        portal_url = self.config_entry.data.get(CONF_PORTAL_URL)
+        self.client_api = PortalVeoliaAPI(
             username=self.config_entry.data[CONF_USERNAME],
             password=self.config_entry.data[CONF_PASSWORD],
             session=async_get_clientsession(hass),
-            portal_url=self.config_entry.data.get(CONF_PORTAL_URL),
+            portal_url=portal_url,
+            backend_url=get_backend_url(portal_url),
         )
 
         self._initial_historical_fetch = False

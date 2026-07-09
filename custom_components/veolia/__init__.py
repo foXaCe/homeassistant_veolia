@@ -10,7 +10,11 @@ from homeassistant.helpers.typing import ConfigType
 from .const import DOMAIN
 from .coordinator import VeoliaDataUpdateCoordinator
 from .data import VeoliaConfigEntry, VeoliaData
+from .portals import register_extra_portals
 from .sensor import LastIndexSensor
+
+# Enregistre les portails communautaires additionnels dès le chargement.
+register_extra_portals()
 
 __all__ = ["VeoliaData", "LastIndexSensor"]
 

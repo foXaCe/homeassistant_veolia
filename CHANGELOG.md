@@ -11,6 +11,13 @@ conventional commits.
 
 ## [Unreleased]
 
+### Added
+
+- Prise en charge du portail **Eau de Perpignan Méditerranée Métropole** (`www.ea-pm.fr`).
+  Ce portail utilise un backend de données distinct (`prd-ael-sirius-pmm-backend`) ;
+  un registre de portails additionnels (`portals.py`) et un client sensible au portail
+  (`PortalVeoliaAPI`) redirigent les requêtes vers le bon backend, par instance.
+
 ### Changed
 
 - Bootstrap complet du dépôt : CI, release-please, Renovate, sécurité, documentation.

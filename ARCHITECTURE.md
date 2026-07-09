@@ -24,6 +24,8 @@ Entités : sensor / binary_sensor / switch / text
 | `__init__.py`      | `async_setup_entry` : instancie le client + coordinator, forward setup vers les plateformes |
 | `config_flow.py`   | Flow UI en 3 étapes : commune → sélection du portail → identifiants      |
 | `coordinator.py`   | `VeoliaDataUpdateCoordinator` (DataUpdateCoordinator, `update_interval=6h`), gestion `ConfigEntryAuthFailed` |
+| `api.py`           | `PortalVeoliaAPI` — sous-classe de `veolia_api.VeoliaAPI` qui redirige, par instance, les appels vers le backend du portail configuré |
+| `portals.py`       | Registre des portails communautaires additionnels (`hostname → client_id + backend`) enregistrés dans `veolia_api` au chargement |
 | `data.py`          | `VeoliaConfigEntry = ConfigEntry[VeoliaData]` — typage du `runtime_data` (client, coordinator, integration) |
 | `model.py`         | Modèle de données consommation (journalière, mensuelle, index, alertes)  |
 | `entity.py`        | Classe de base des entités (device info, rattachement coordinator)       |
@@ -44,6 +46,11 @@ Entités : sensor / binary_sensor / switch / text
   dans `manifest.json` et `requirements.txt`.
 - **Portails multiples** : le config flow résout la commune via l'API de référence des
   communes, puis choisit le portail (`CONF_PORTAL_URL`).
+- **Portails à backend distinct** : `veolia_api` cible un backend unique codé en dur.
+  Certains portails délégués (ex. `www.ea-pm.fr`) exposent leurs données sur un autre
+  backend (`prd-ael-sirius-pmm-backend.istefr.fr`). Ils sont déclarés dans `portals.py`
+  avec leur backend, et `PortalVeoliaAPI` redirige les requêtes en conséquence — sans
+  patch global, chaque instance ne réécrit que son propre backend.
 
 ## Release & CI
 

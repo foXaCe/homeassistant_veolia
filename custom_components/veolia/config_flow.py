@@ -3,7 +3,6 @@
 from urllib.parse import urlparse
 
 import aiohttp
-from veolia_api import VeoliaAPI
 from veolia_api.exceptions import VeoliaAPIInvalidCredentialsError
 from veolia_api.portals import VEOLIA_PORTAL_CLIENTS
 import voluptuous as vol
@@ -12,7 +11,9 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .api import PortalVeoliaAPI
 from .const import CONF_PORTAL_URL, DOMAIN, LOGGER
+from .portals import get_backend_url
 
 
 class VeoliaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -98,11 +99,12 @@ class VeoliaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         LOGGER.debug("Request credentials")
         if user_input is not None:
             try:
-                api = VeoliaAPI(
+                api = PortalVeoliaAPI(
                     user_input[CONF_USERNAME],
                     user_input[CONF_PASSWORD],
                     async_get_clientsession(self.hass),
                     portal_url=self._portal_url,
+                    backend_url=get_backend_url(self._portal_url),
                 )
                 valid = await api.login()
 
