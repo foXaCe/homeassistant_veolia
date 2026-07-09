@@ -1,6 +1,6 @@
 [project]
 name = "veolia"
-version = "2.1.0" # x-release-please-version
+version = "2.2.0" # x-release-please-version
 description = "Intégration Home Assistant pour Veolia Eau"
 requires-python = ">=3.13"
 license = { file = "LICENSE" }
