@@ -11,21 +11,10 @@ conventional commits.
 
 ## [2.2.0](https://github.com/foXaCe/homeassistant_veolia/compare/v2.1.0...v2.2.0) (2026-07-09)
 
-
 ### Added
 
-* support portail Eau de Perpignan Méditerranée Métropole (www.ea-pm.fr) ([202bccc](https://github.com/foXaCe/homeassistant_veolia/commit/202bcccb68d89853bb84618dfaaad69915e33930))
-
-
-### Changed
-
-* vendor corrected veolia_api client instead of git dependency ([8c7da12](https://github.com/foXaCe/homeassistant_veolia/commit/8c7da12cacee3d367b3fbbc23999be6967e74ee2))
-
-## [Unreleased]
-
-### Added
-
-- Prise en charge du portail **Eau de Perpignan Méditerranée Métropole** (`www.ea-pm.fr`).
+- Prise en charge du portail **Eau de Perpignan Méditerranée Métropole** (`www.ea-pm.fr`)
+  ([202bccc](https://github.com/foXaCe/homeassistant_veolia/commit/202bcccb68d89853bb84618dfaaad69915e33930)).
 
 ### Changed
 
@@ -33,7 +22,8 @@ conventional commits.
   [foXaCe/veolia-api](https://github.com/foXaCe/veolia-api) v2.2.0) : il résout le
   `client_id` **et** le backend de données par portail (au lieu d'un backend codé en
   dur), permettant les portails à backend dédié comme `www.ea-pm.fr`. Vendoré car
-  hassfest n'accepte que des dépendances PyPI. Seule dépendance ajoutée : `tenacity`.
+  hassfest n'accepte que des dépendances PyPI. Seule dépendance ajoutée : `tenacity`
+  ([8c7da12](https://github.com/foXaCe/homeassistant_veolia/commit/8c7da12cacee3d367b3fbbc23999be6967e74ee2)).
 - Bootstrap complet du dépôt : CI, release-please, Renovate, sécurité, documentation.
 
 ## [2.1.0] - 2026-07-09
