@@ -11,10 +11,6 @@ CONF_PORTAL_URL = "portal_url"
 # Options
 DEFAULT_SCAN_INTERVAL_HOURS = 6
 
-# Platforms
-SENSOR = "sensor"
-PLATFORMS = [SENSOR]
-
 # API constants keys
 LAST_DATA = -1
 IDX = "index"

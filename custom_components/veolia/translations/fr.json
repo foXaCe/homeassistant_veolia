@@ -37,8 +37,7 @@
       "unknown": "Impossible de se connecter, consultez les journaux pour plus d'informations",
       "commune_not_supported": "Désolé votre compte Veolia n'est pas supportée par cette intégration. Vous devez attendre la migration vers le nouveau site (cette étape dépend uniquement de Veolia) Une fois la migration effectuée, veuillez réessayer.",
       "no_communes_found": "Aucune commune trouvée pour ce code postal",
-      "commune_not_veolia": "Veolia ne fournit pas d'eau dans cette commune",
-      "no_account": "Aucun compte Veolia trouvé pour ce code postal"
+      "commune_not_veolia": "Veolia ne fournit pas d'eau dans cette commune"
     },
     "abort": {
       "already_configured": "Ce compte est déjà configuré",

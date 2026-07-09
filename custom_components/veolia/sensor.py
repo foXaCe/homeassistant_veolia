@@ -1,22 +1,16 @@
 """Sensor platform for Veolia."""
 
-from homeassistant.components.recorder.statistics import (
-    StatisticMeanType,
-    StatisticMetaData,
-    async_import_statistics,
-)
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
 )
 from homeassistant.const import CURRENCY_EURO, UnitOfVolume
-from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.util.unit_conversion import VolumeConverter
 
 from .const import LOGGER
 from .entity import VeoliaEntity, VeoliaMesurements
+from .statistics import import_volume_statistics
 
 
 async def async_setup_entry(hass, entry, async_add_devices) -> None:
@@ -91,31 +85,15 @@ class LastIndexSensor(VeoliaMesurements):
         """Set icon."""
         return "mdi:counter"
 
-    # NOT WORKING
-    # async def async_added_to_hass(self) -> None:
-    #     """Start historical update on HA add."""
-    #     await self._update_historical_data()
-    #     await super().async_added_to_hass()
-
-    @callback
-    async def _update_historical_data(self) -> None:
-        """Update historical values."""
-        LOGGER.debug("Update_historical_data for %s", self.__class__.__name__)
-        stats = self.coordinator.data.computed.index_stats_m3
-        if not stats:
-            LOGGER.debug("No data update for %s", self.__class__.__name__)
-            return
-        metadata = StatisticMetaData(
-            mean_type=StatisticMeanType.NONE,
-            has_sum=True,
-            name=None,
-            source="recorder",
-            statistic_id=self.entity_id,
-            unit_class=VolumeConverter.UNIT_CLASS,
-            unit_of_measurement=UnitOfVolume.CUBIC_METERS,
+    async def async_added_to_hass(self) -> None:
+        """Import historical meter-index statistics on add."""
+        await super().async_added_to_hass()
+        import_volume_statistics(
+            self.hass,
+            self.entity_id,
+            self.coordinator.data.computed.index_stats_m3,
+            UnitOfVolume.CUBIC_METERS,
         )
-        LOGGER.debug("-> StatisticMetaData %s Data : %s", metadata, stats)
-        async_import_statistics(self.hass, metadata, stats)
 
 
 class DailyConsumption(VeoliaMesurements):
@@ -154,29 +132,14 @@ class DailyConsumption(VeoliaMesurements):
         }
 
     async def async_added_to_hass(self) -> None:
-        """Start historical update on HA add."""
-        await self._update_historical_data()
+        """Import historical daily-consumption statistics on add."""
         await super().async_added_to_hass()
-
-    @callback
-    async def _update_historical_data(self) -> None:
-        """Update historical values."""
-        LOGGER.debug("Update_historical_data for %s", self.__class__.__name__)
-        stats = self.coordinator.data.computed.daily_stats_liters
-        if not stats:
-            LOGGER.debug("No data update for %s", self.__class__.__name__)
-            return
-        metadata = StatisticMetaData(
-            mean_type=StatisticMeanType.NONE,
-            has_sum=True,
-            name=None,
-            source="recorder",
-            statistic_id=self.entity_id,
-            unit_class=VolumeConverter.UNIT_CLASS,
-            unit_of_measurement=UnitOfVolume.LITERS,
+        import_volume_statistics(
+            self.hass,
+            self.entity_id,
+            self.coordinator.data.computed.daily_stats_liters,
+            UnitOfVolume.LITERS,
         )
-        LOGGER.debug("-> StatisticMetaData %s Data : %s", metadata, stats)
-        async_import_statistics(self.hass, metadata, stats)
 
     @property
     def state_class(self) -> str:
@@ -250,29 +213,14 @@ class MonthlyConsumption(VeoliaMesurements):
         return "mdi:water"
 
     async def async_added_to_hass(self) -> None:
-        """Start historical update on HA add."""
-        await self._update_historical_data()
+        """Import historical monthly-consumption statistics on add."""
         await super().async_added_to_hass()
-
-    @callback
-    async def _update_historical_data(self) -> None:
-        """Update historical values."""
-        LOGGER.debug("Update_historical_data for %s", self.__class__.__name__)
-        stats = self.coordinator.data.computed.monthly_stats_cubic_meters
-        if not stats:
-            LOGGER.debug("No data update for %s", self.__class__.__name__)
-            return
-        metadata = StatisticMetaData(
-            mean_type=StatisticMeanType.NONE,
-            has_sum=True,
-            name=None,
-            source="recorder",
-            statistic_id=self.entity_id,
-            unit_class=VolumeConverter.UNIT_CLASS,
-            unit_of_measurement=UnitOfVolume.CUBIC_METERS,
+        import_volume_statistics(
+            self.hass,
+            self.entity_id,
+            self.coordinator.data.computed.monthly_stats_cubic_meters,
+            UnitOfVolume.CUBIC_METERS,
         )
-        LOGGER.debug("-> StatisticMetaData %s Data : %s", metadata, stats)
-        async_import_statistics(self.hass, metadata, stats)
 
 
 class AnnualConsumption(VeoliaMesurements):
