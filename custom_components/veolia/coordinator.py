@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
@@ -112,6 +113,11 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
             portal_url=entry.data.get(CONF_PORTAL_URL),
         )
         self._consecutive_failures = 0
+        # Serializes read-modify-write pushes of the alert settings: the client
+        # POSTs the FULL settings payload, so two concurrent pushes reading the
+        # same starting state would silently overwrite each other (last writer
+        # wins) both locally and on the Veolia side.
+        self._alert_settings_lock = asyncio.Lock()
 
     async def _async_update_data(self) -> VeoliaModel:
         """Fetch consumption data, compute the model and import statistics.
@@ -276,32 +282,37 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         Pushes a copy of the settings with the requested changes applied
         first; the in-memory settings are only updated once the API confirms
         the push succeeded, so a rejected or failed update leaves the UI
-        showing the last value actually applied on the Veolia side.
+        showing the last value actually applied on the Veolia side. Concurrent
+        pushes are serialized by an instance lock: a second call waits for the
+        first to finish and re-reads the state it just applied, so both sets
+        of changes end up applied cumulatively instead of one overwriting the
+        other.
 
         Raises:
             HomeAssistantError: if the settings are unavailable or the API
                 rejects the update.
 
         """
-        settings = self.data.alert_settings
-        if settings is None:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="alert_settings_unavailable",
-            )
-        updated = replace(settings, **changes)
-        LOGGER.debug("Pushing alert settings changes: %s", changes)
-        try:
-            success = await self.client_api.set_alerts_settings(updated)
-        except (VeoliaAPIError, aiohttp.ClientError, TimeoutError) as err:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="set_alert_failed",
-            ) from err
-        if not success:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="set_alert_failed",
-            )
-        self.data.raw.alert_settings = updated
+        async with self._alert_settings_lock:
+            settings = self.data.alert_settings
+            if settings is None:
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="alert_settings_unavailable",
+                )
+            updated = replace(settings, **changes)
+            LOGGER.debug("Pushing alert settings changes: %s", changes)
+            try:
+                success = await self.client_api.set_alerts_settings(updated)
+            except (VeoliaAPIError, aiohttp.ClientError, TimeoutError) as err:
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="set_alert_failed",
+                ) from err
+            if not success:
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="set_alert_failed",
+                )
+            self.data.raw.alert_settings = updated
         await self.async_request_refresh()
