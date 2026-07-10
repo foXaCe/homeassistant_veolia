@@ -133,6 +133,10 @@ def _compute_daily_stats(
     on or before ``after`` is skipped: API corrections therefore only
     apply to the most recently imported row, which the coordinator
     re-imports by rewinding the anchor one row back.
+
+    Days flagged as estimated by Veolia (``IDX_FIABILITY``) are imported
+    as-is rather than skipped, so the series never has artificial holes;
+    the rewound last row converges to its final value on later refreshes.
     """
     stats: list[StatisticsRow] = []
     cumul = initial_sum
