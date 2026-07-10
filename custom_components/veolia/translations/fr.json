@@ -77,10 +77,12 @@
       "init": {
         "title": "Options Veolia",
         "data": {
-          "scan_interval": "Intervalle de mise à jour (heures)"
+          "scan_interval": "Intervalle de mise à jour (heures)",
+          "cost_per_m3": "Prix de l'eau (€/m³)"
         },
         "data_description": {
-          "scan_interval": "Fréquence à laquelle l'intégration récupère les données du portail Veolia."
+          "scan_interval": "Fréquence à laquelle l'intégration récupère les données du portail Veolia.",
+          "cost_per_m3": "Prix du mètre cube TTC utilisé pour construire la statistique de coût cumulé. Un changement ne s'applique qu'aux journées importées ensuite."
         }
       }
     }

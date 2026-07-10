@@ -23,17 +23,22 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_COST_PER_M3,
     CONF_PORTAL_URL,
     CONSECUTIVE_FAILURES_FOR_ISSUE,
+    COST_CURRENCY,
+    DEFAULT_COST_PER_M3,
     DEFAULT_SCAN_INTERVAL_HOURS,
     DOMAIN,
     LOGGER,
+    STATISTIC_NAME_COST,
     STATISTIC_NAME_DAILY,
     STATISTIC_NAME_INDEX,
     STATISTIC_NAME_MONTHLY,
 )
 from .model import (
     VeoliaModel,
+    _compute_cost_stats,
     _compute_daily_stats,
     _compute_index_stats,
     _compute_monthly_stats,
@@ -112,16 +117,18 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         """Fetch consumption data, compute the model and import statistics.
 
         The fetch window and the statistics ``sum`` are both anchored on
-        the last statistic already imported for the daily-consumption
-        series: with no prior statistic, a full year of history is fetched
-        (initial setup); otherwise only the month containing the last
-        imported day onward is re-fetched, since the client fetches whole
-        months and that always covers everything missing, including after
-        a long outage. Each series is imported with a one-row rewind of
-        its anchor (see ``_anchored_series_params``): the most recently
-        imported row is re-imported with its current API value, so the
-        in-progress month and a provisional last day converge to their
-        final values, while all older rows stay immutable.
+        the last statistic already imported for the daily-consumption and
+        cost series: with no prior statistic for either one, a full year
+        of history is fetched (initial setup, or the cost series added
+        after an integration update); otherwise only the month containing
+        the earliest of the two last-imported days onward is re-fetched,
+        since the client fetches whole months and that always covers
+        everything missing, including after a long outage. Each series is
+        imported with a one-row rewind of its anchor (see
+        ``_anchored_series_params``): the most recently imported row is
+        re-imported with its current API value, so the in-progress month
+        and a provisional last day converge to their final values, while
+        all older rows stay immutable.
         """
         today = dt_util.now().date()
         end_date = date(today.year, today.month, 1)
@@ -129,15 +136,19 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         daily_statistic_id = build_statistic_id(account_id, "daily_consumption")
         monthly_statistic_id = build_statistic_id(account_id, "monthly_consumption")
         index_statistic_id = build_statistic_id(account_id, "index")
+        cost_statistic_id = build_statistic_id(account_id, "cost")
 
         daily_anchor = await get_last_stat(self.hass, daily_statistic_id)
         monthly_anchor = await get_last_stat(self.hass, monthly_statistic_id)
         index_anchor = await get_last_stat(self.hass, index_statistic_id)
+        cost_anchor = await get_last_stat(self.hass, cost_statistic_id)
 
-        if daily_anchor is None:
+        if daily_anchor is None or cost_anchor is None:
+            # Réimport intégral : première installation, ou série coût ajoutée
+            # après coup (mise à jour de l'intégration) — un an d'historique.
             start_date = date(end_date.year - 1, end_date.month, 1)
         else:
-            start_date = daily_anchor.date.replace(day=1)
+            start_date = min(daily_anchor.date, cost_anchor.date).replace(day=1)
         LOGGER.debug("Fetching consumption data from %s to %s", start_date, end_date)
 
         try:
@@ -173,8 +184,9 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         daily = account_data.daily_consumption or []
         monthly = account_data.monthly_consumption or []
 
+        daily_dates = _record_dates(daily)
         daily_initial_sum, daily_after = _anchored_series_params(
-            daily_anchor, fetched_dates=_record_dates(daily)
+            daily_anchor, fetched_dates=daily_dates
         )
         monthly_initial_sum, monthly_after = _anchored_series_params(
             monthly_anchor,
@@ -183,6 +195,11 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         # The index series carries absolute values (sum == state), so only
         # the rewound cutoff matters: re-importing its last row is safe.
         index_after = index_anchor.date - timedelta(days=1) if index_anchor else None
+        # The cost series derives from the same daily records as the
+        # daily-consumption series, so it shares the same fetched dates.
+        cost_initial_sum, cost_after = _anchored_series_params(
+            cost_anchor, fetched_dates=daily_dates
+        )
 
         import_volume_statistics(
             self.hass,
@@ -208,6 +225,21 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
             STATISTIC_NAME_INDEX.format(account_id=account_id),
             _compute_index_stats(daily, after=index_after),
             UnitOfVolume.CUBIC_METERS,
+        )
+        import_volume_statistics(
+            self.hass,
+            cost_statistic_id,
+            STATISTIC_NAME_COST.format(account_id=account_id),
+            _compute_cost_stats(
+                daily,
+                price_per_m3=self.config_entry.options.get(
+                    CONF_COST_PER_M3, DEFAULT_COST_PER_M3
+                ),
+                initial_sum=cost_initial_sum,
+                after=cost_after,
+            ),
+            COST_CURRENCY,
+            unit_class=None,
         )
 
         return model

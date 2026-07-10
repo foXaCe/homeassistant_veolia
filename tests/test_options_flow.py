@@ -7,7 +7,11 @@ from unittest.mock import MagicMock
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.veolia.const import DEFAULT_SCAN_INTERVAL_HOURS
+from custom_components.veolia.const import (
+    CONF_COST_PER_M3,
+    DEFAULT_COST_PER_M3,
+    DEFAULT_SCAN_INTERVAL_HOURS,
+)
 from homeassistant.components.recorder import Recorder
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
@@ -48,7 +52,8 @@ async def test_options_flow_updates_scan_interval(
 
     result = await hass.config_entries.options.async_init(mock_config_entry.entry_id)
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {CONF_SCAN_INTERVAL: 12}
+        result["flow_id"],
+        {CONF_SCAN_INTERVAL: 12, CONF_COST_PER_M3: DEFAULT_COST_PER_M3},
     )
     await hass.async_block_till_done()
 
@@ -57,6 +62,48 @@ async def test_options_flow_updates_scan_interval(
     assert isinstance(mock_config_entry.options[CONF_SCAN_INTERVAL], int)
     # The coordinator's update interval reflects the new option after reload.
     assert mock_config_entry.runtime_data.update_interval == timedelta(hours=12)
+
+
+async def test_options_flow_shows_default_cost_per_m3(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """The init step shows the default water price when none is configured."""
+    mock_config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.options.async_init(mock_config_entry.entry_id)
+    schema = result["data_schema"].schema
+    (cost_per_m3_key,) = (key for key in schema if key == CONF_COST_PER_M3)
+    assert cost_per_m3_key.default() == DEFAULT_COST_PER_M3
+
+
+async def test_options_flow_updates_cost_per_m3(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """Submitting a new water price updates the entry options as a float."""
+    mock_config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.options.async_init(mock_config_entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL_HOURS, CONF_COST_PER_M3: 4.25},
+    )
+    await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert mock_config_entry.options[CONF_COST_PER_M3] == 4.25
+    assert isinstance(mock_config_entry.options[CONF_COST_PER_M3], float)
 
 
 async def test_options_flow_shows_previously_saved_value(

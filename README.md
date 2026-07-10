@@ -70,7 +70,7 @@ Informations supplémentaires :
 
 L'intégration Veolia permet de visualiser les données de consommation d'eau en natif dans Home Assistant. Elle re-télécharge l'historique du mois en cours depuis Veolia et met à jour la base de données Home Assistant.
 
-> Veolia publie les données avec ~2 jours de retard : pour que chaque journée soit visualisée **à sa vraie date**, l'intégration publie des **statistiques externes datées** (`veolia:xxx_daily_consumption`, `veolia:xxx_monthly_consumption`, `veolia:xxx_index`) au jour de relevé réel. Ce sont elles qu'il faut utiliser dans le dashboard Énergie et les cartes statistiques — pas les capteurs, qui ne changent qu'au moment de l'actualisation.
+> Veolia publie les données avec ~2 jours de retard : pour que chaque journée soit visualisée **à sa vraie date**, l'intégration publie des **statistiques externes datées** (`veolia:xxx_daily_consumption`, `veolia:xxx_monthly_consumption`, `veolia:xxx_index`, `veolia:xxx_cost`) au jour de relevé réel. Ce sont elles qu'il faut utiliser dans le dashboard Énergie et les cartes statistiques — pas les capteurs, qui ne changent qu'au moment de l'actualisation.
 
 > [!IMPORTANT]
 >
@@ -106,6 +106,8 @@ Pour ajouter la carte de consommation d'eau journalière, sur votre dashboard, c
 <a href=""><img src="images/config_carte.png" alt="Configuration de la carte"></a>
 
 > #### **Note :** La carte Graphique des statistiques ne fonctionne qu'avec les statistiques externes `veolia:xxx_*` — les capteurs `sensor.veolia_*` n'enregistrent plus de statistiques long-terme (leurs valeurs seraient datées de l'heure d'actualisation, pas du jour de relevé réel).
+
+La statistique `veolia:xxx_cost` (coût cumulé de l'eau en euros) s'utilise de la même façon dans une carte `Graphique des statistiques` : elle est dérivée de la consommation journalière au prix du m³ configuré dans les options de l'intégration (par défaut 3,81 €/m³ TTC). Un changement de prix ne s'applique qu'aux journées importées ensuite — l'historique déjà importé garde le prix en vigueur au moment de son import.
 
 ## Vérifier l'éligibilité de votre commune
 

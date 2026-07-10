@@ -68,12 +68,14 @@ def import_volume_statistics(
     name: str,
     stats: list[StatisticsRow],
     unit: str,
+    unit_class: str | None = VolumeConverter.UNIT_CLASS,
 ) -> None:
     """Convert calendar-dated rows to StatisticData and push them to the recorder.
 
     ``stats`` rows are keyed by calendar ``date``; each is converted here to
     a tz-aware start of local day before import. No-op (with a debug log)
-    when ``stats`` is empty.
+    when ``stats`` is empty. The cost series is not a volume, so it passes
+    ``unit_class=None``, a monetary series with no unit class.
     """
     if not stats:
         LOGGER.debug("No statistics to import for %s", statistic_id)
@@ -84,7 +86,7 @@ def import_volume_statistics(
         name=name,
         source=DOMAIN,
         statistic_id=statistic_id,
-        unit_class=VolumeConverter.UNIT_CLASS,
+        unit_class=unit_class,
         unit_of_measurement=unit,
     )
     statistic_data: list[StatisticData] = [
