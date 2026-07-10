@@ -1,13 +1,14 @@
-"""Veolia API client"""
+"""Veolia API client."""
+
+from __future__ import annotations
 
 import asyncio
+from datetime import UTC, date, datetime, timedelta
+from http import HTTPStatus
 import itertools
 import logging
 import re
-from collections.abc import Coroutine, Iterator
-from datetime import UTC, date, datetime, timedelta
-from http import HTTPStatus
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlencode
 
 import aiohttp
@@ -18,6 +19,16 @@ from tenacity import (
     wait_exponential,
 )
 
+from .constants import (
+    CONCURRENTS_TASKS,
+    GET,
+    LOGIN_URL,
+    POST,
+    TIMEOUT,
+    TOKEN_EXPIRY_MARGIN,
+    TYPE_FRONT,
+    ConsumptionType,
+)
 from .exceptions import (
     VeoliaAPIGetDataError,
     VeoliaAPIInvalidCredentialsError,
@@ -26,24 +37,17 @@ from .exceptions import (
     VeoliaAPISetDataError,
     VeoliaAPITokenError,
 )
-
-from .constants import (
-    CONCURRENTS_TASKS,
-    GET,
-    LOGIN_URL,
-    POST,
-    TIMEOUT,
-    TYPE_FRONT,
-    ConsumptionType,
-)
 from .model import AlertSettings, VeoliaAccountData
 from .portals import get_portal
+
+if TYPE_CHECKING:
+    from collections.abc import Coroutine, Iterator
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class VeoliaAPI:
-    """Veolia API client"""
+    """Veolia API client."""
 
     def __init__(
         self,
@@ -68,48 +72,37 @@ class VeoliaAPI:
         self._client_id = portal.client_id
         self._backend_url = portal.backend_url
         self.account_data = VeoliaAccountData()
-        self.session = session or aiohttp.ClientSession(timeout=TIMEOUT)
+        self._owns_session = session is None
+        self.session = session or aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=TIMEOUT),
+        )
 
-    @retry(
-        reraise=True,
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=1, min=1, max=16),
-        retry=retry_if_exception_type((aiohttp.ClientError, VeoliaAPIRateLimitError)),
-    )
-    async def _send_request(
-        self,
+    async def close(self) -> None:
+        """Release the HTTP session if this client owns it."""
+        if self._owns_session and not self.session.closed:
+            await self.session.close()
+
+    @staticmethod
+    def _log_request(
         url: str,
         method: str,
-        params: dict | None = None,
-        json_data: dict | None = None,
-        is_login: bool = False,
-    ) -> aiohttp.ClientResponse:
-        """Make an HTTP request with support for params, headers and JSON body."""
+        params: dict[str, Any] | None,
+        json_data: dict[str, Any] | None,
+        headers: dict[str, str],
+    ) -> None:
+        """Debug-log a request with credentials redacted.
+
+        The Cognito login payload carries the password in ``AuthParameters``;
+        headers carry the bearer token.
+        """
         safe_params = {**params} if params else {}
         if "password" in safe_params:
             safe_params["password"] = "REDACTED"
 
-        req_headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (X11; Linux x86_64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/140.0.0.0 Safari/537.36"
-            ),
-            "Accept": "*/*",
-        }
-
-        if self.account_data.access_token:
-            req_headers["Authorization"] = f"Bearer {self.account_data.access_token}"
-
-        if method == POST:
-            req_headers["Content-Type"] = "application/json"
-
-        safe_headers = {**req_headers}
+        safe_headers = {**headers}
         if "Authorization" in safe_headers:
             safe_headers["Authorization"] = "REDACTED"
 
-        # Redact credentials from the JSON body (Cognito login payload carries the
-        # password in AuthParameters) before logging.
         safe_json = None
         if json_data is not None:
             safe_json = {**json_data}
@@ -129,7 +122,45 @@ class VeoliaAPI:
             safe_json,
         )
 
-        kwargs: dict = {"headers": req_headers, "allow_redirects": False}
+    @retry(
+        reraise=True,
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=1, max=16),
+        retry=retry_if_exception_type((aiohttp.ClientError, VeoliaAPIRateLimitError)),
+    )
+    async def _send_request(
+        self,
+        url: str,
+        method: str,
+        params: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | None = None,
+        is_login: bool = False,
+    ) -> aiohttp.ClientResponse:
+        """Make an HTTP request with support for params, headers and JSON body."""
+        req_headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/140.0.0.0 Safari/537.36"
+            ),
+            "Accept": "*/*",
+        }
+
+        if self.account_data.access_token:
+            req_headers["Authorization"] = f"Bearer {self.account_data.access_token}"
+
+        if method == POST:
+            req_headers["Content-Type"] = "application/json"
+
+        self._log_request(url, method, params, json_data, req_headers)
+
+        kwargs: dict[str, Any] = {
+            "headers": req_headers,
+            "allow_redirects": False,
+            # Per-request timeout: the injected shared session (e.g. the Home
+            # Assistant one) has no total timeout of its own.
+            "timeout": aiohttp.ClientTimeout(total=TIMEOUT),
+        }
 
         if params:
             kwargs["params"] = params
@@ -163,10 +194,13 @@ class VeoliaAPI:
             )
             raise VeoliaAPIRateLimitError("HTTP 429 Too Many Requests")
 
+        if not is_login and response.status == HTTPStatus.UNAUTHORIZED:
+            raise VeoliaAPITokenError("Authentication rejected (HTTP 401)")
+
         return response
 
     async def login(self) -> bool:
-        """Login to the Veolia API"""
+        """Login to the Veolia API."""
         _LOGGER.info("Logging in...")
         email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
 
@@ -193,16 +227,17 @@ class VeoliaAPI:
         return False
 
     async def _check_token(self) -> None:
-        """Check if the access token is still valid"""
+        """Check if the access token is still valid, re-login otherwise."""
         if (
             not self.account_data.access_token
-            or datetime.now().timestamp() >= self.account_data.token_expiration
+            or datetime.now(UTC).timestamp()
+            >= self.account_data.token_expiration - TOKEN_EXPIRY_MARGIN
         ):
             _LOGGER.debug("No access token or token expired")
             await self.login()
 
     async def _get_access_token(self) -> None:
-        """Request the access token"""
+        """Request the access token."""
         token_url = f"{LOGIN_URL}"
         _LOGGER.debug("Requesting access token...")
         json_payload = {
@@ -239,13 +274,13 @@ class VeoliaAPI:
             raise VeoliaAPITokenError("Access token not found")
 
         self.account_data.token_expiration = (
-            datetime.now()
+            datetime.now(UTC)
             + timedelta(seconds=authentication_result.get("ExpiresIn", 0))
         ).timestamp()
         _LOGGER.debug("OK - Access token retrieved")
 
     async def _get_client_data(self) -> None:
-        """Get the account data"""
+        """Get the account data."""
         _LOGGER.debug("Fetching user & billing data...")
         url = f"{self._backend_url}/espace-client?type-front={TYPE_FRONT}"
         response = await self._send_request(url=url, method=GET)
@@ -289,7 +324,7 @@ class VeoliaAPI:
             .get("abonnements", [{}])[0]
         )
         self.account_data.adresse_de_branchement = abonnement.get(
-            "adresse_de_branchement"
+            "adresse_de_branchement",
         )
         self.account_data.emplacement_compteur = abonnement.get("emplacement_compteur")
         self.account_data.libelle_contrat = abonnement.get("libelle_contrat")
@@ -308,7 +343,7 @@ class VeoliaAPI:
         self.account_data.numero_pds = facturation_data.get("numero_pds")
         self.account_data.solde = facturation_data.get("solde")
         self.account_data.dernier_index_releve = facturation_data.get(
-            "dernier_index_releve"
+            "dernier_index_releve",
         )
         self.account_data.date_index_releve = facturation_data.get("date_index_releve")
         self.account_data.mode_releve = facturation_data.get("mode_releve")
@@ -334,11 +369,11 @@ class VeoliaAPI:
         year: int,
         month: int | None = None,
     ) -> list[dict[str, Any]]:
-        """Get the water consumption data"""
-        date_debut = datetime.strptime(
-            self.account_data.date_debut_abonnement,
-            "%Y-%m-%d",
-        ).replace(tzinfo=UTC)
+        """Get the water consumption data."""
+        date_debut_str = self.account_data.date_debut_abonnement
+        if not date_debut_str:
+            raise VeoliaAPIGetDataError("Subscription start date unknown, login first")
+        date_debut = datetime.strptime(date_debut_str, "%Y-%m-%d").replace(tzinfo=UTC)
         if month is not None:
             requested_date = datetime(year, month, 1, tzinfo=UTC)
         else:
@@ -385,10 +420,11 @@ class VeoliaAPI:
                 f"call to= consommations failed with http status= {response.status}",
             )
         _LOGGER.debug("OK - Fetch done for %s-%s", year, month)
-        return await response.json()
+        return cast("list[dict[str, Any]]", await response.json())
 
     async def get_alerts_settings(self) -> AlertSettings:
-        """Get the consumption alerts
+        """Get the consumption alerts.
+
         Response example:
         {
             "seuils": {
@@ -409,7 +445,7 @@ class VeoliaAPI:
                     }
                 }
             }
-        }
+        }.
         """
         await self._check_token()
 
@@ -448,36 +484,36 @@ class VeoliaAPI:
 
             return AlertSettings(
                 daily_enabled=bool(daily_alert),
-                daily_threshold=daily_alert["valeur"] if daily_alert else None,
+                daily_threshold=daily_alert["valeur"] if daily_alert else 0,
                 daily_notif_email=(
                     daily_alert["moyen_contact"]["souscrit_par_email"]
                     if daily_alert
-                    else None
+                    else False
                 ),
                 daily_notif_sms=(
                     daily_alert["moyen_contact"]["souscrit_par_mobile"]
                     if daily_alert
-                    else None
+                    else False
                 ),
                 monthly_enabled=bool(monthly_alert),
-                monthly_threshold=(monthly_alert["valeur"] if monthly_alert else None),
+                monthly_threshold=(monthly_alert["valeur"] if monthly_alert else 0),
                 monthly_notif_email=(
                     monthly_alert["moyen_contact"]["souscrit_par_email"]
                     if monthly_alert
-                    else None
+                    else False
                 ),
                 monthly_notif_sms=(
                     monthly_alert["moyen_contact"]["souscrit_par_mobile"]
                     if monthly_alert
-                    else None
+                    else False
                 ),
             )
         raise VeoliaAPIGetDataError(
             f"call to= alertes failed with http status= {response.status}",
         )
 
-    async def _get_mensualisation_plan(self) -> dict:
-        """Get the plan de mensualisation for the given abonnement ID"""
+    async def _get_mensualisation_plan(self) -> dict[str, Any]:
+        """Get the plan de mensualisation for the given abonnement ID."""
         _LOGGER.debug("Getting mensualisation plan...")
         url = f"{self._backend_url}/abonnements/{self.account_data.id_abonnement}/facturation/mensualisation/plan"
 
@@ -489,12 +525,12 @@ class VeoliaAPI:
 
         if response.status == HTTPStatus.OK:
             _LOGGER.debug("OK - Mensualisation plan received")
-            return await response.json()
+            return cast("dict[str, Any]", await response.json())
 
-        error_message = (
-            f"call to= mensualisation/plan failed with http status= {response.status}",
+        _LOGGER.warning(
+            "call to mensualisation/plan failed with HTTP status %s",
+            response.status,
         )
-        _LOGGER.error(error_message)
         return {}
 
     @staticmethod
@@ -526,7 +562,7 @@ class VeoliaAPI:
         async def _sem_task(
             task_coro: Coroutine[Any, Any, list[dict[str, Any]]],
         ) -> list[dict[str, Any]]:
-            """Semaphore coro"""
+            """Semaphore coro."""
             async with semaphore:
                 return await task_coro
 
@@ -555,12 +591,12 @@ class VeoliaAPI:
         _LOGGER.info("OK - All data fetched for range")
 
     async def set_alerts_settings(self, alert_settings: AlertSettings) -> bool:
-        """Set the consumption alerts"""
+        """Set the consumption alerts."""
         await self._check_token()
 
         _LOGGER.debug("Setting alerts params...")
         url = f"{self._backend_url}/alertes/{self.account_data.numero_pds}"
-        payload = {}
+        payload: dict[str, Any] = {}
 
         if alert_settings.daily_enabled:
             payload["alerte_journaliere"] = {

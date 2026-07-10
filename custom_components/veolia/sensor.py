@@ -1,534 +1,163 @@
 """Sensor platform for Veolia."""
 
-from homeassistant.components.recorder.statistics import (
-    StatisticMeanType,
-    StatisticMetaData,
-    async_import_statistics,
-)
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
+    SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.const import CURRENCY_EURO, UnitOfVolume
 from homeassistant.core import callback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.util.unit_conversion import VolumeConverter
 
-from .const import LOGGER
-from .entity import VeoliaEntity, VeoliaMesurements
-
-
-async def async_setup_entry(hass, entry, async_add_devices) -> None:
-    """Set up sensor platform."""
-    LOGGER.debug("Setting up sensor platform")
-    coordinator = entry.runtime_data
-    sensors = [
-        LastIndexSensor(coordinator, entry),
-        DailyConsumption(coordinator, entry),
-        MonthlyConsumption(coordinator, entry),
-        AnnualConsumption(coordinator, entry),
-        LastDateSensor(coordinator, entry),
-        BalanceSensor(coordinator, entry),
-        MonthlyPaymentSensor(coordinator, entry),
-        NextPaymentSensor(coordinator, entry),
-        BillingIndexSensor(coordinator, entry),
-    ]
-    async_add_devices(sensors)
-
-
-class LastIndexSensor(VeoliaMesurements):
-    """LastIndexSensor sensor."""
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID to use for this entity."""
-        return f"{self.config_entry.entry_id}_last_index"
-
-    @property
-    def has_entity_name(self) -> bool:
-        """Indicate that entity has name defined."""
-        return True
-
-    @property
-    def translation_key(self) -> str:
-        """Translation key for this entity."""
-        return "veolia_index"
-
-    @property
-    def native_value(self) -> float | None:
-        """Return sensor value."""
-        value = self.coordinator.data.computed.last_index_m3
-        LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, value)
-        return value
-
-    @property
-    def extra_state_attributes(self) -> dict:
-        """Return extra state."""
-        comp = self.coordinator.data.computed
-        return {
-            "data_type": comp.daily_fiability,
-            "last_report": comp.last_date.isoformat() if comp.last_date else None,
-        }
-
-    @property
-    def state_class(self) -> str:
-        """Return the state_class of the sensor."""
-        return SensorStateClass.TOTAL_INCREASING
-
-    @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the unit_of_measurement of the sensor."""
-        return UnitOfVolume.CUBIC_METERS
-
-    @property
-    def suggested_display_precision(self) -> int:
-        """Return the suggested display precision."""
-        return 3
-
-    @property
-    def icon(self) -> str | None:
-        """Set icon."""
-        return "mdi:counter"
-
-    # NOT WORKING
-    # async def async_added_to_hass(self) -> None:
-    #     """Start historical update on HA add."""
-    #     await self._update_historical_data()
-    #     await super().async_added_to_hass()
-
-    @callback
-    async def _update_historical_data(self) -> None:
-        """Update historical values."""
-        LOGGER.debug("Update_historical_data for %s", self.__class__.__name__)
-        stats = self.coordinator.data.computed.index_stats_m3
-        if not stats:
-            LOGGER.debug("No data update for %s", self.__class__.__name__)
-            return
-        metadata = StatisticMetaData(
-            mean_type=StatisticMeanType.NONE,
-            has_sum=True,
-            name=None,
-            source="recorder",
-            statistic_id=self.entity_id,
-            unit_class=VolumeConverter.UNIT_CLASS,
-            unit_of_measurement=UnitOfVolume.CUBIC_METERS,
-        )
-        LOGGER.debug("-> StatisticMetaData %s Data : %s", metadata, stats)
-        async_import_statistics(self.hass, metadata, stats)
-
-
-class DailyConsumption(VeoliaMesurements):
-    """DailyConsumption sensor."""
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID to use for this entity."""
-        return f"{self.config_entry.entry_id}_daily_consumption"
-
-    @property
-    def has_entity_name(self) -> bool:
-        """Indicate that entity has name defined."""
-        return True
-
-    @property
-    def translation_key(self) -> str:
-        """Translation key for this entity."""
-        return "daily_consumption"
-
-    @property
-    def native_value(self) -> int | None:
-        """Return sensor value (last available day, Veolia lags ~1 day)."""
-        value = self.coordinator.data.computed.last_daily_liters
-        LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, value)
-        return value
-
-    @property
-    def extra_state_attributes(self) -> dict:
-        """Return extra state."""
-        comp = self.coordinator.data.computed
-        return {
-            "data_type": comp.daily_fiability,
-            "reading_date": comp.last_date.isoformat() if comp.last_date else None,
-            "today": comp.daily_today_liters,
-        }
-
-    async def async_added_to_hass(self) -> None:
-        """Start historical update on HA add."""
-        await self._update_historical_data()
-        await super().async_added_to_hass()
-
-    @callback
-    async def _update_historical_data(self) -> None:
-        """Update historical values."""
-        LOGGER.debug("Update_historical_data for %s", self.__class__.__name__)
-        stats = self.coordinator.data.computed.daily_stats_liters
-        if not stats:
-            LOGGER.debug("No data update for %s", self.__class__.__name__)
-            return
-        metadata = StatisticMetaData(
-            mean_type=StatisticMeanType.NONE,
-            has_sum=True,
-            name=None,
-            source="recorder",
-            statistic_id=self.entity_id,
-            unit_class=VolumeConverter.UNIT_CLASS,
-            unit_of_measurement=UnitOfVolume.LITERS,
-        )
-        LOGGER.debug("-> StatisticMetaData %s Data : %s", metadata, stats)
-        async_import_statistics(self.hass, metadata, stats)
-
-    @property
-    def state_class(self) -> str:
-        """Return the state_class of the sensor."""
-        return SensorStateClass.TOTAL
-
-    @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the unit_of_measurement of the sensor."""
-        return UnitOfVolume.LITERS
-
-    @property
-    def suggested_display_precision(self) -> int:
-        """Return the suggested display precision."""
-        return 0
-
-    @property
-    def icon(self) -> str | None:
-        """Set icon."""
-        return "mdi:water"
-
-
-class MonthlyConsumption(VeoliaMesurements):
-    """MonthlyConsumption sensor."""
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID to use for this entity."""
-        return f"{self.config_entry.entry_id}_monthly_consumption"
-
-    @property
-    def has_entity_name(self) -> bool:
-        """Indicate that entity has name defined."""
-        return True
-
-    @property
-    def translation_key(self) -> str:
-        """Translation key for this entity."""
-        return "monthly_consumption"
-
-    @property
-    def native_value(self) -> float | None:
-        """Return sensor value."""
-        value = self.coordinator.data.computed.monthly_latest_m3
-        LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, value)
-        return value
-
-    @property
-    def extra_state_attributes(self) -> dict:
-        """Return extra state."""
-        return {"data_type": self.coordinator.data.computed.monthly_fiability}
-
-    @property
-    def state_class(self) -> str:
-        """Return the state_class of the sensor."""
-        return SensorStateClass.TOTAL
-
-    @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the unit_of_measurement of the sensor."""
-        return UnitOfVolume.CUBIC_METERS
-
-    @property
-    def suggested_display_precision(self) -> int:
-        """Return the suggested display precision."""
-        return 3
-
-    @property
-    def icon(self) -> str | None:
-        """Set icon."""
-        return "mdi:water"
-
-    async def async_added_to_hass(self) -> None:
-        """Start historical update on HA add."""
-        await self._update_historical_data()
-        await super().async_added_to_hass()
-
-    @callback
-    async def _update_historical_data(self) -> None:
-        """Update historical values."""
-        LOGGER.debug("Update_historical_data for %s", self.__class__.__name__)
-        stats = self.coordinator.data.computed.monthly_stats_cubic_meters
-        if not stats:
-            LOGGER.debug("No data update for %s", self.__class__.__name__)
-            return
-        metadata = StatisticMetaData(
-            mean_type=StatisticMeanType.NONE,
-            has_sum=True,
-            name=None,
-            source="recorder",
-            statistic_id=self.entity_id,
-            unit_class=VolumeConverter.UNIT_CLASS,
-            unit_of_measurement=UnitOfVolume.CUBIC_METERS,
-        )
-        LOGGER.debug("-> StatisticMetaData %s Data : %s", metadata, stats)
-        async_import_statistics(self.hass, metadata, stats)
-
-
-class AnnualConsumption(VeoliaMesurements):
-    """AnnualConsumption sensor."""
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID to use for this entity."""
-        return f"{self.config_entry.entry_id}_annual_consumption"
-
-    @property
-    def has_entity_name(self) -> bool:
-        """Indicate that entity has name defined."""
-        return True
-
-    @property
-    def translation_key(self) -> str:
-        """Translation key for this entity."""
-        return "annual_consumption"
-
-    @property
-    def native_value(self) -> float | None:
-        """Return sensor value."""
-        value = self.coordinator.data.computed.annual_total_m3
-        LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, value)
-        return value
-
-    @property
-    def state_class(self) -> str:
-        """Return the state_class of the sensor."""
-        return SensorStateClass.TOTAL
-
-    @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the unit_of_measurement of the sensor."""
-        return UnitOfVolume.CUBIC_METERS
-
-    @property
-    def suggested_display_precision(self) -> int:
-        """Return the suggested display precision."""
-        return 3
-
-    @property
-    def icon(self) -> str | None:
-        """Set icon."""
-        return "mdi:water"
-
-
-class LastDateSensor(CoordinatorEntity, SensorEntity):
-    """LastDateSensor sensor."""
-
-    def __init__(self, coordinator, config_entry) -> None:
-        """Initialize the entity."""
-        super().__init__(coordinator)
-        self.config_entry = config_entry
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID to use for this entity."""
-        return f"{self.config_entry.entry_id}_last_date"
-
-    @property
-    def has_entity_name(self) -> bool:
-        """Indicate that entity has name defined."""
-        return True
-
-    @property
-    def translation_key(self) -> str:
-        """Translation key for this entity."""
-        return "last_consumption_date"
-
-    @property
-    def native_value(self) -> str | None:
-        """Return sensor value."""
-        value = self.coordinator.data.computed.last_date
-        LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, value)
-        return value
-
-    @property
-    def icon(self) -> str | None:
-        """Set icon."""
-        return "mdi:calendar"
-
-
-class BalanceSensor(VeoliaEntity):
-    """Account balance sensor (solde)."""
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID to use for this entity."""
-        return f"{self.config_entry.entry_id}_balance"
-
-    @property
-    def translation_key(self) -> str:
-        """Translation key for this entity."""
-        return "balance"
-
-    @property
-    def native_value(self) -> float | None:
-        """Return sensor value."""
-        value = self.coordinator.data.computed.balance
-        LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, value)
-        return value
-
-    @property
-    def device_class(self) -> str:
-        """Return the device_class of the sensor."""
-        return SensorDeviceClass.MONETARY
-
-    @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the unit_of_measurement of the sensor."""
-        return CURRENCY_EURO
-
-    @property
-    def suggested_display_precision(self) -> int:
-        """Return the suggested display precision."""
-        return 2
-
-    @property
-    def icon(self) -> str | None:
-        """Set icon."""
-        return "mdi:cash"
-
-
-class MonthlyPaymentSensor(VeoliaEntity):
-    """Monthly direct debit amount sensor (mensualité)."""
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID to use for this entity."""
-        return f"{self.config_entry.entry_id}_monthly_payment"
-
-    @property
-    def translation_key(self) -> str:
-        """Translation key for this entity."""
-        return "monthly_payment"
-
-    @property
-    def native_value(self) -> float | None:
-        """Return sensor value."""
-        value = self.coordinator.data.computed.monthly_payment
-        LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, value)
-        return value
-
-    @property
-    def device_class(self) -> str:
-        """Return the device_class of the sensor."""
-        return SensorDeviceClass.MONETARY
-
-    @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the unit_of_measurement of the sensor."""
-        return CURRENCY_EURO
-
-    @property
-    def suggested_display_precision(self) -> int:
-        """Return the suggested display precision."""
-        return 2
-
-    @property
-    def icon(self) -> str | None:
-        """Set icon."""
-        return "mdi:cash-clock"
-
-
-class NextPaymentSensor(VeoliaEntity):
-    """Next scheduled direct debit sensor (prochain prélèvement)."""
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID to use for this entity."""
-        return f"{self.config_entry.entry_id}_next_payment"
-
-    @property
-    def translation_key(self) -> str:
-        """Translation key for this entity."""
-        return "next_payment"
-
-    @property
-    def native_value(self) -> str | None:
-        """Return the next direct debit date, formatted for display (DD/MM/YYYY).
-
-        A ``device_class: date`` sensor is rendered as raw ISO by the frontend,
-        so we expose a locale-friendly string here and keep the ISO date in the
-        ``date`` attribute for automations.
-        """
-        value = self.coordinator.data.computed.next_payment_date
-        LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, value)
-        return value.strftime("%d/%m/%Y") if value else None
-
-    @property
-    def extra_state_attributes(self) -> dict:
-        """Return extra state."""
-        comp = self.coordinator.data.computed
-        return {
-            "date": comp.next_payment_date.isoformat()
-            if comp.next_payment_date
-            else None,
-            "amount": comp.next_payment_amount,
-        }
-
-    @property
-    def icon(self) -> str | None:
-        """Set icon."""
-        return "mdi:calendar-clock"
-
-
-class BillingIndexSensor(VeoliaMesurements):
-    """Official billing meter index sensor (index de facturation)."""
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID to use for this entity."""
-        return f"{self.config_entry.entry_id}_billing_index"
-
-    @property
-    def translation_key(self) -> str:
-        """Translation key for this entity."""
-        return "billing_index"
-
-    @property
-    def native_value(self) -> float | None:
-        """Return sensor value (last official meter index)."""
-        raw = self.coordinator.data.dernier_index_releve
-        LOGGER.debug("Sensor %s value : %s", self.__class__.__name__, raw)
-        try:
-            return float(raw) if raw is not None else None
-        except (TypeError, ValueError):
-            return None
-
-    @property
-    def state_class(self) -> str:
-        """Return the state_class of the sensor."""
-        return SensorStateClass.TOTAL_INCREASING
-
-    @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the unit_of_measurement of the sensor."""
-        return UnitOfVolume.CUBIC_METERS
-
-    @property
-    def suggested_display_precision(self) -> int:
-        """Return the suggested display precision."""
-        return 0
-
-    @property
-    def icon(self) -> str | None:
-        """Set icon."""
-        return "mdi:counter"
-
-    @property
-    def extra_state_attributes(self) -> dict:
-        """Return contract information as attributes."""
-        data = self.coordinator.data
-        return {
+from .entity import VeoliaBaseEntity
+from .statistics import import_volume_statistics
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+
+    from .data import VeoliaConfigEntry
+    from .model import StatisticsRow, VeoliaModel
+
+PARALLEL_UPDATES = 0
+
+
+def _format_next_payment(data: VeoliaModel) -> str | None:
+    """Format the next direct debit date for display (DD/MM/YYYY).
+
+    A ``device_class: date`` sensor is rendered as raw ISO by the frontend,
+    so a locale-friendly string is exposed here and the ISO date is kept in
+    the ``date`` attribute for automations.
+    """
+    value = data.computed.next_payment_date
+    return value.strftime("%d/%m/%Y") if value else None
+
+
+def _billing_index(data: VeoliaModel) -> float | None:
+    """Return the official billing meter index as a float."""
+    try:
+        raw = data.dernier_index_releve
+        return float(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+@dataclass(frozen=True, kw_only=True)
+class VeoliaSensorEntityDescription(SensorEntityDescription):
+    """Description of a Veolia sensor."""
+
+    value_fn: Callable[[VeoliaModel], Any]
+    attributes_fn: Callable[[VeoliaModel], dict[str, Any]] | None = None
+    statistics_fn: Callable[[VeoliaModel], list[StatisticsRow]] | None = None
+    statistics_unit: str | None = None
+
+
+SENSORS: tuple[VeoliaSensorEntityDescription, ...] = (
+    VeoliaSensorEntityDescription(
+        key="last_index",
+        translation_key="veolia_index",
+        device_class=SensorDeviceClass.WATER,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
+        suggested_display_precision=3,
+        value_fn=lambda data: data.computed.last_index_m3,
+        attributes_fn=lambda data: {
+            "data_type": data.computed.daily_fiability,
+            "last_report": (
+                data.computed.last_date.isoformat() if data.computed.last_date else None
+            ),
+        },
+        statistics_fn=lambda data: data.computed.index_stats_m3,
+        statistics_unit=UnitOfVolume.CUBIC_METERS,
+    ),
+    VeoliaSensorEntityDescription(
+        key="daily_consumption",
+        translation_key="daily_consumption",
+        device_class=SensorDeviceClass.WATER,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfVolume.LITERS,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.computed.last_daily_liters,
+        attributes_fn=lambda data: {
+            "data_type": data.computed.daily_fiability,
+            "reading_date": (
+                data.computed.last_date.isoformat() if data.computed.last_date else None
+            ),
+            "today": data.computed.daily_today_liters,
+        },
+        statistics_fn=lambda data: data.computed.daily_stats_liters,
+        statistics_unit=UnitOfVolume.LITERS,
+    ),
+    VeoliaSensorEntityDescription(
+        key="monthly_consumption",
+        translation_key="monthly_consumption",
+        device_class=SensorDeviceClass.WATER,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
+        suggested_display_precision=3,
+        value_fn=lambda data: data.computed.monthly_latest_m3,
+        attributes_fn=lambda data: {"data_type": data.computed.monthly_fiability},
+        statistics_fn=lambda data: data.computed.monthly_stats_cubic_meters,
+        statistics_unit=UnitOfVolume.CUBIC_METERS,
+    ),
+    VeoliaSensorEntityDescription(
+        key="annual_consumption",
+        translation_key="annual_consumption",
+        device_class=SensorDeviceClass.WATER,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
+        suggested_display_precision=3,
+        value_fn=lambda data: data.computed.annual_total_m3,
+    ),
+    VeoliaSensorEntityDescription(
+        key="last_date",
+        translation_key="last_consumption_date",
+        value_fn=lambda data: data.computed.last_date,
+    ),
+    VeoliaSensorEntityDescription(
+        key="balance",
+        translation_key="balance",
+        device_class=SensorDeviceClass.MONETARY,
+        native_unit_of_measurement=CURRENCY_EURO,
+        suggested_display_precision=2,
+        value_fn=lambda data: data.computed.balance,
+    ),
+    VeoliaSensorEntityDescription(
+        key="monthly_payment",
+        translation_key="monthly_payment",
+        device_class=SensorDeviceClass.MONETARY,
+        native_unit_of_measurement=CURRENCY_EURO,
+        suggested_display_precision=2,
+        value_fn=lambda data: data.computed.monthly_payment,
+    ),
+    VeoliaSensorEntityDescription(
+        key="next_payment",
+        translation_key="next_payment",
+        value_fn=_format_next_payment,
+        attributes_fn=lambda data: {
+            "date": (
+                data.computed.next_payment_date.isoformat()
+                if data.computed.next_payment_date
+                else None
+            ),
+            "amount": data.computed.next_payment_amount,
+        },
+    ),
+    VeoliaSensorEntityDescription(
+        key="billing_index",
+        translation_key="billing_index",
+        device_class=SensorDeviceClass.WATER,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
+        suggested_display_precision=0,
+        value_fn=_billing_index,
+        attributes_fn=lambda data: {
             "reading_date": data.date_index_releve,
             "meter_number": data.numero_compteur,
             "reading_mode": data.mode_releve,
@@ -540,4 +169,59 @@ class BillingIndexSensor(VeoliaMesurements):
             "customer_number": data.numero_client,
             "holder": data.titulaire,
             "brand": data.marque,
-        }
+        },
+    ),
+)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: VeoliaConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up the Veolia sensors."""
+    coordinator = entry.runtime_data
+    async_add_entities(
+        VeoliaSensor(coordinator, description) for description in SENSORS
+    )
+
+
+class VeoliaSensor(VeoliaBaseEntity, SensorEntity):
+    """Veolia sensor driven by its entity description."""
+
+    entity_description: VeoliaSensorEntityDescription
+
+    @property
+    def native_value(self) -> Any:
+        """Return the sensor value."""
+        return self.entity_description.value_fn(self.coordinator.data)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra state attributes."""
+        if self.entity_description.attributes_fn is None:
+            return None
+        return self.entity_description.attributes_fn(self.coordinator.data)
+
+    async def async_added_to_hass(self) -> None:
+        """Import historical statistics once registered."""
+        await super().async_added_to_hass()
+        self._import_statistics()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Refresh statistics on every coordinator update."""
+        self._import_statistics()
+        super()._handle_coordinator_update()
+
+    def _import_statistics(self) -> None:
+        """Import recorder statistics when the description provides them."""
+        description = self.entity_description
+        if description.statistics_fn is None or description.statistics_unit is None:
+            return
+        import_volume_statistics(
+            self.hass,
+            self.entity_id,
+            description.statistics_fn(self.coordinator.data),
+            description.statistics_unit,
+        )

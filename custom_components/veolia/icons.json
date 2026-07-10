@@ -1,0 +1,81 @@
+{
+  "entity": {
+    "sensor": {
+      "veolia_index": {
+        "default": "mdi:counter"
+      },
+      "daily_consumption": {
+        "default": "mdi:water"
+      },
+      "monthly_consumption": {
+        "default": "mdi:water"
+      },
+      "annual_consumption": {
+        "default": "mdi:water"
+      },
+      "last_consumption_date": {
+        "default": "mdi:calendar"
+      },
+      "balance": {
+        "default": "mdi:cash"
+      },
+      "monthly_payment": {
+        "default": "mdi:cash-clock"
+      },
+      "next_payment": {
+        "default": "mdi:calendar-clock"
+      },
+      "billing_index": {
+        "default": "mdi:counter"
+      }
+    },
+    "binary_sensor": {
+      "daily_alert_binary_sensor": {
+        "default": "mdi:bell-cancel",
+        "state": {
+          "on": "mdi:bell-check"
+        }
+      },
+      "monthly_alert_binary_sensor": {
+        "default": "mdi:bell-cancel",
+        "state": {
+          "on": "mdi:bell-check"
+        }
+      },
+      "unoccupied_alert_binary_sensor": {
+        "default": "mdi:bell-cancel",
+        "state": {
+          "on": "mdi:bell-check"
+        }
+      }
+    },
+    "switch": {
+      "daily_sms_alert_switch": {
+        "default": "mdi:comment-off",
+        "state": {
+          "on": "mdi:comment-check"
+        }
+      },
+      "monthly_sms_alert_switch": {
+        "default": "mdi:comment-off",
+        "state": {
+          "on": "mdi:comment-check"
+        }
+      },
+      "unoccupied_alert_switch": {
+        "default": "mdi:comment-off",
+        "state": {
+          "on": "mdi:comment-check"
+        }
+      }
+    },
+    "text": {
+      "daily_threshold_text": {
+        "default": "mdi:water-alert"
+      },
+      "monthly_threshold_text": {
+        "default": "mdi:water-alert"
+      }
+    }
+  }
+}
