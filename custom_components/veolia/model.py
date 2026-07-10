@@ -93,6 +93,19 @@ def _sorted_unique_by_date(
     return sorted(by_date.items())
 
 
+def _record_dates(
+    records: list[dict[str, Any]],
+    date_fn: Callable[[dict[str, Any]], date | None] | None = None,
+) -> set[date]:
+    """Return the set of calendar dates present in ``records``.
+
+    Uses the same date extraction and deduplication as
+    ``_sorted_unique_by_date`` so the anchor-presence check in the
+    coordinator sees exactly the dates the builders will iterate.
+    """
+    return {d for d, _ in _sorted_unique_by_date(records, date_fn)}
+
+
 def _monthly_record_date(rec: dict[str, Any]) -> date | None:
     """Return the first-of-month calendar date for a monthly record."""
     year = rec.get(YEAR)
@@ -146,6 +159,36 @@ def _compute_daily_stats(
         liters = int((rec.get(CONSO) or {}).get(LITRE) or 0)
         cumul += liters
         stats.append({"date": d, "state": liters, "sum": cumul})
+    return stats
+
+
+def _compute_cost_stats(
+    daily: list[dict[str, Any]],
+    *,
+    price_per_m3: float,
+    initial_sum: float = 0.0,
+    after: date | None = None,
+) -> list[StatisticsRow]:
+    """Build cumulative water-cost statistics rows (EUR).
+
+    Each day's cost is ``liters / 1000 * price_per_m3`` (the price is a
+    configuration option, applied at import time). Sorting, deduplication
+    and anchoring semantics are identical to ``_compute_daily_stats``:
+    rows dated on or before ``after`` are skipped and the running sum
+    restarts from ``initial_sum``. A price change therefore only affects
+    rows imported afterwards — previously imported history keeps the sums
+    computed with the price in effect at the time, like a real-world
+    tariff change.
+    """
+    stats: list[StatisticsRow] = []
+    cumul = initial_sum
+    for d, rec in _sorted_unique_by_date(daily):
+        if after is not None and d <= after:
+            continue
+        liters = int((rec.get(CONSO) or {}).get(LITRE) or 0)
+        cost = liters / 1000 * price_per_m3
+        cumul += cost
+        stats.append({"date": d, "state": cost, "sum": cumul})
     return stats
 
 

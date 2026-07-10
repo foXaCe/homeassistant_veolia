@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Generator
 from datetime import date, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -11,8 +12,10 @@ from freezegun.api import FrozenDateTimeFactory
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from veolia_api.exceptions import VeoliaAPIError, VeoliaAPIInvalidCredentialsError
+from veolia_api.model import AlertSettings
 
 from custom_components.veolia.const import (
+    CONF_COST_PER_M3,
     CONSECUTIVE_FAILURES_FOR_ISSUE,
     DEFAULT_SCAN_INTERVAL_HOURS,
     DOMAIN,
@@ -22,7 +25,7 @@ from custom_components.veolia.coordinator import (
     _anchored_series_params,
 )
 from custom_components.veolia.model import VeoliaModel
-from custom_components.veolia.statistics import LastStat
+from custom_components.veolia.statistics import LastStat, build_statistic_id
 from homeassistant.components.recorder import Recorder
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
@@ -30,7 +33,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from .const import MOCK_ACCOUNT_ID
+from .const import MOCK_ACCOUNT_ID, MOCK_CONFIG_ENTRY_DATA, build_alert_settings
 
 
 @pytest.fixture
@@ -60,19 +63,39 @@ def mock_statistics_anchor() -> Generator[AsyncMock]:
 
 def test_anchored_series_params_no_anchor() -> None:
     """Without an anchor, the series is imported from scratch."""
-    assert _anchored_series_params(None) == (0.0, None)
+    assert _anchored_series_params(None, set()) == (0.0, None)
 
 
 def test_anchored_series_params_rewinds_one_row() -> None:
     """The cutoff rewinds one day and the sum restarts from before the last row."""
     anchor = LastStat(sum=4200.0, state=120.0, date=date(2026, 7, 5))
-    assert _anchored_series_params(anchor) == (4080.0, date(2026, 7, 4))
+    assert _anchored_series_params(anchor, {anchor.date}) == (4080.0, date(2026, 7, 4))
 
 
 def test_anchored_series_params_state_none_falls_back_to_strict() -> None:
     """A stored row without a state falls back to strict (non-rewound) anchoring."""
     anchor = LastStat(sum=4200.0, state=None, date=date(2026, 7, 5))
-    assert _anchored_series_params(anchor) == (4200.0, date(2026, 7, 5))
+    assert _anchored_series_params(anchor, {anchor.date}) == (4200.0, date(2026, 7, 5))
+
+
+def test_anchored_series_params_missing_anchor_row_falls_back_to_strict() -> None:
+    """If the anchor day vanished from the fetch, fall back to strict anchoring.
+
+    Rewinding onto a vanished row would subtract its contribution from the
+    running sum without ever re-adding it, making the recorder ``sum``
+    regress (see plan 013). The fetch here covers 07-01, 07-02 and 07-04 but
+    not the 07-03 anchor day itself.
+    """
+    anchor = LastStat(sum=450.0, state=200.0, date=date(2026, 7, 3))
+    fetched_dates = {date(2026, 7, 1), date(2026, 7, 2), date(2026, 7, 4)}
+    assert _anchored_series_params(anchor, fetched_dates) == (450.0, date(2026, 7, 3))
+
+
+def test_anchored_series_params_rewinds_when_anchor_row_present() -> None:
+    """When the anchor day is still present in the fetch, rewind as before."""
+    anchor = LastStat(sum=450.0, state=200.0, date=date(2026, 7, 3))
+    fetched_dates = {date(2026, 7, 2), date(2026, 7, 3), date(2026, 7, 4)}
+    assert _anchored_series_params(anchor, fetched_dates) == (250.0, date(2026, 7, 2))
 
 
 async def test_coordinator_update_success(
@@ -153,6 +176,106 @@ async def test_coordinator_anchored_window_handles_year_rollover(
     mock_veolia_api.fetch_all_data.assert_called_once_with(
         date(2025, 12, 1), date(2026, 1, 1)
     )
+
+
+async def test_coordinator_cost_anchor_missing_triggers_full_backfill(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """A daily anchor with no cost anchor still triggers a full year backfill.
+
+    Simulates the cost series being added after an integration update: the
+    daily-consumption series already has history, but the cost series has
+    never been imported yet.
+    """
+    freezer.move_to("2026-07-10")
+    daily_statistic_id = build_statistic_id(MOCK_ACCOUNT_ID, "daily_consumption")
+    daily_anchor = LastStat(sum=4200.0, state=120.0, date=date(2026, 6, 5))
+
+    async def _side_effect(_hass: HomeAssistant, statistic_id: str) -> LastStat | None:
+        return daily_anchor if statistic_id == daily_statistic_id else None
+
+    mock_config_entry.add_to_hass(hass)
+    coordinator = VeoliaDataUpdateCoordinator(hass, mock_config_entry)
+
+    with (
+        patch(
+            "custom_components.veolia.coordinator.get_last_stat",
+            new_callable=AsyncMock,
+            side_effect=_side_effect,
+        ),
+        patch("custom_components.veolia.coordinator.import_volume_statistics"),
+    ):
+        await coordinator.async_refresh()
+
+    mock_veolia_api.fetch_all_data.assert_called_once_with(
+        date(2025, 7, 1), date(2026, 7, 1)
+    )
+
+
+async def test_coordinator_imports_cost_statistics(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """A successful refresh imports the cost series alongside the other three."""
+    mock_config_entry.add_to_hass(hass)
+    coordinator = VeoliaDataUpdateCoordinator(hass, mock_config_entry)
+
+    with (
+        patch(
+            "custom_components.veolia.coordinator.get_last_stat",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
+            "custom_components.veolia.coordinator.import_volume_statistics"
+        ) as mock_import,
+    ):
+        await coordinator.async_refresh()
+
+    assert mock_import.call_count == 4
+    cost_statistic_id = build_statistic_id(MOCK_ACCOUNT_ID, "cost")
+    call = next(c for c in mock_import.call_args_list if c.args[1] == cost_statistic_id)
+    assert call.args[2] == f"Veolia coût eau {MOCK_ACCOUNT_ID}"
+    assert call.args[4] == "EUR"
+    assert call.kwargs["unit_class"] is None
+
+
+async def test_coordinator_cost_price_from_options(
+    hass: HomeAssistant,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """The cost series uses the price per m3 configured in the entry options."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=2,
+        unique_id=MOCK_ACCOUNT_ID,
+        data=dict(MOCK_CONFIG_ENTRY_DATA),
+        options={CONF_COST_PER_M3: 5.0},
+    )
+    entry.add_to_hass(hass)
+    coordinator = VeoliaDataUpdateCoordinator(hass, entry)
+
+    with (
+        patch(
+            "custom_components.veolia.coordinator.get_last_stat",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
+            "custom_components.veolia.coordinator.import_volume_statistics"
+        ) as mock_import,
+    ):
+        await coordinator.async_refresh()
+
+    cost_statistic_id = build_statistic_id(MOCK_ACCOUNT_ID, "cost")
+    call = next(c for c in mock_import.call_args_list if c.args[1] == cost_statistic_id)
+    stats = call.args[3]
+    # Fixture daily data: first row is 2026-07-01 with 100 L.
+    assert stats[0]["state"] == pytest.approx(100 / 1000 * 5.0)
 
 
 async def test_coordinator_auth_failed_triggers_reauth(
@@ -344,6 +467,67 @@ async def test_async_set_alert_settings_success_applies_in_memory(
     await hass.async_block_till_done()
 
     assert coordinator.data.alert_settings.daily_notif_sms is True
+
+    # The coordinator was created outside of the normal config entry setup
+    # lifecycle, so nothing will cancel its debounced-refresh timer for us.
+    await coordinator.async_shutdown()
+
+
+async def test_async_set_alert_settings_serializes_concurrent_calls(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+    mock_statistics_anchor: AsyncMock,
+) -> None:
+    """Concurrent pushes are serialized instead of overwriting each other.
+
+    The client POSTs the full settings payload on every push. Without the
+    lock, two concurrent calls would both read the same starting state and
+    the second (last writer) would push a payload missing the first call's
+    change. With the lock, the second call waits for the first to finish and
+    re-reads the state it just applied, so both changes end up applied
+    cumulatively.
+    """
+    mock_veolia_api.account_data.alert_settings = build_alert_settings(
+        daily_notif_email=False, monthly_notif_email=False
+    )
+    mock_config_entry.add_to_hass(hass)
+    coordinator = VeoliaDataUpdateCoordinator(hass, mock_config_entry)
+    await coordinator.async_refresh()
+    assert coordinator.data.alert_settings.daily_notif_email is False
+    assert coordinator.data.alert_settings.monthly_notif_email is False
+
+    release_first = asyncio.Event()
+
+    async def delayed_push(_settings: AlertSettings) -> bool:
+        # Holds whichever call is currently inside the lock open, so the
+        # second call has time to queue up behind it before either one
+        # completes.
+        await release_first.wait()
+        return True
+
+    mock_veolia_api.set_alerts_settings.side_effect = delayed_push
+
+    gather_task = asyncio.gather(
+        coordinator.async_set_alert_settings(daily_notif_email=True),
+        coordinator.async_set_alert_settings(monthly_notif_email=True),
+    )
+    # Let both tasks start: the first acquires the lock and blocks inside
+    # the push, the second blocks waiting for the lock.
+    await asyncio.sleep(0)
+    release_first.set()
+    await gather_task
+    await hass.async_block_till_done()
+
+    assert mock_veolia_api.set_alerts_settings.await_count == 2
+    second_pushed_settings = mock_veolia_api.set_alerts_settings.call_args_list[1].args[
+        0
+    ]
+    assert second_pushed_settings.daily_notif_email is True
+    assert second_pushed_settings.monthly_notif_email is True
+
+    assert coordinator.data.alert_settings.daily_notif_email is True
+    assert coordinator.data.alert_settings.monthly_notif_email is True
 
     # The coordinator was created outside of the normal config entry setup
     # lifecycle, so nothing will cancel its debounced-refresh timer for us.

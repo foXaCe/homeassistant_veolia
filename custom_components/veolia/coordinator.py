@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
@@ -23,20 +24,27 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_COST_PER_M3,
     CONF_PORTAL_URL,
     CONSECUTIVE_FAILURES_FOR_ISSUE,
+    COST_CURRENCY,
+    DEFAULT_COST_PER_M3,
     DEFAULT_SCAN_INTERVAL_HOURS,
     DOMAIN,
     LOGGER,
+    STATISTIC_NAME_COST,
     STATISTIC_NAME_DAILY,
     STATISTIC_NAME_INDEX,
     STATISTIC_NAME_MONTHLY,
 )
 from .model import (
     VeoliaModel,
+    _compute_cost_stats,
     _compute_daily_stats,
     _compute_index_stats,
     _compute_monthly_stats,
+    _monthly_record_date,
+    _record_dates,
 )
 from .statistics import (
     LastStat,
@@ -51,7 +59,10 @@ if TYPE_CHECKING:
     from .data import VeoliaConfigEntry
 
 
-def _anchored_series_params(anchor: LastStat | None) -> tuple[float, date | None]:
+def _anchored_series_params(
+    anchor: LastStat | None,
+    fetched_dates: set[date],
+) -> tuple[float, date | None]:
     """Return the (initial_sum, after) builder parameters for an anchored series.
 
     Implements the one-row rewind: the ``after`` cutoff is moved one day
@@ -60,13 +71,19 @@ def _anchored_series_params(anchor: LastStat | None) -> tuple[float, date | None
     with its current API value — the recorder upserts rows sharing the
     same ``start`` — so a partial value (in-progress month, provisional
     last day) converges to its final value on later refreshes, while every
-    older row stays immutable. Without an anchor the series is imported
-    from scratch; if the stored row has no ``state`` (not expected for
-    these series), fall back to strict anchoring (last row immutable).
+    older row stays immutable.
+
+    The rewind only happens when the anchor row is present in the fresh
+    fetch (``anchor.date in fetched_dates``): rewinding onto a vanished
+    row would subtract its contribution from the running sum without ever
+    re-adding it, making the recorder ``sum`` regress. When the anchor row
+    is missing — or has no stored ``state`` — fall back to strict
+    anchoring (last row immutable, sum continues from ``anchor.sum``).
+    Without an anchor the series is imported from scratch.
     """
     if anchor is None:
         return 0.0, None
-    if anchor.state is None:
+    if anchor.state is None or anchor.date not in fetched_dates:
         return anchor.sum, anchor.date
     return anchor.sum - anchor.state, anchor.date - timedelta(days=1)
 
@@ -96,21 +113,28 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
             portal_url=entry.data.get(CONF_PORTAL_URL),
         )
         self._consecutive_failures = 0
+        # Serializes read-modify-write pushes of the alert settings: the client
+        # POSTs the FULL settings payload, so two concurrent pushes reading the
+        # same starting state would silently overwrite each other (last writer
+        # wins) both locally and on the Veolia side.
+        self._alert_settings_lock = asyncio.Lock()
 
     async def _async_update_data(self) -> VeoliaModel:
         """Fetch consumption data, compute the model and import statistics.
 
         The fetch window and the statistics ``sum`` are both anchored on
-        the last statistic already imported for the daily-consumption
-        series: with no prior statistic, a full year of history is fetched
-        (initial setup); otherwise only the month containing the last
-        imported day onward is re-fetched, since the client fetches whole
-        months and that always covers everything missing, including after
-        a long outage. Each series is imported with a one-row rewind of
-        its anchor (see ``_anchored_series_params``): the most recently
-        imported row is re-imported with its current API value, so the
-        in-progress month and a provisional last day converge to their
-        final values, while all older rows stay immutable.
+        the last statistic already imported for the daily-consumption and
+        cost series: with no prior statistic for either one, a full year
+        of history is fetched (initial setup, or the cost series added
+        after an integration update); otherwise only the month containing
+        the earliest of the two last-imported days onward is re-fetched,
+        since the client fetches whole months and that always covers
+        everything missing, including after a long outage. Each series is
+        imported with a one-row rewind of its anchor (see
+        ``_anchored_series_params``): the most recently imported row is
+        re-imported with its current API value, so the in-progress month
+        and a provisional last day converge to their final values, while
+        all older rows stay immutable.
         """
         today = dt_util.now().date()
         end_date = date(today.year, today.month, 1)
@@ -118,15 +142,19 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         daily_statistic_id = build_statistic_id(account_id, "daily_consumption")
         monthly_statistic_id = build_statistic_id(account_id, "monthly_consumption")
         index_statistic_id = build_statistic_id(account_id, "index")
+        cost_statistic_id = build_statistic_id(account_id, "cost")
 
         daily_anchor = await get_last_stat(self.hass, daily_statistic_id)
         monthly_anchor = await get_last_stat(self.hass, monthly_statistic_id)
         index_anchor = await get_last_stat(self.hass, index_statistic_id)
+        cost_anchor = await get_last_stat(self.hass, cost_statistic_id)
 
-        if daily_anchor is None:
+        if daily_anchor is None or cost_anchor is None:
+            # Réimport intégral : première installation, ou série coût ajoutée
+            # après coup (mise à jour de l'intégration) — un an d'historique.
             start_date = date(end_date.year - 1, end_date.month, 1)
         else:
-            start_date = daily_anchor.date.replace(day=1)
+            start_date = min(daily_anchor.date, cost_anchor.date).replace(day=1)
         LOGGER.debug("Fetching consumption data from %s to %s", start_date, end_date)
 
         try:
@@ -162,11 +190,22 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         daily = account_data.daily_consumption or []
         monthly = account_data.monthly_consumption or []
 
-        daily_initial_sum, daily_after = _anchored_series_params(daily_anchor)
-        monthly_initial_sum, monthly_after = _anchored_series_params(monthly_anchor)
+        daily_dates = _record_dates(daily)
+        daily_initial_sum, daily_after = _anchored_series_params(
+            daily_anchor, fetched_dates=daily_dates
+        )
+        monthly_initial_sum, monthly_after = _anchored_series_params(
+            monthly_anchor,
+            fetched_dates=_record_dates(monthly, _monthly_record_date),
+        )
         # The index series carries absolute values (sum == state), so only
         # the rewound cutoff matters: re-importing its last row is safe.
         index_after = index_anchor.date - timedelta(days=1) if index_anchor else None
+        # The cost series derives from the same daily records as the
+        # daily-consumption series, so it shares the same fetched dates.
+        cost_initial_sum, cost_after = _anchored_series_params(
+            cost_anchor, fetched_dates=daily_dates
+        )
 
         import_volume_statistics(
             self.hass,
@@ -192,6 +231,21 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
             STATISTIC_NAME_INDEX.format(account_id=account_id),
             _compute_index_stats(daily, after=index_after),
             UnitOfVolume.CUBIC_METERS,
+        )
+        import_volume_statistics(
+            self.hass,
+            cost_statistic_id,
+            STATISTIC_NAME_COST.format(account_id=account_id),
+            _compute_cost_stats(
+                daily,
+                price_per_m3=self.config_entry.options.get(
+                    CONF_COST_PER_M3, DEFAULT_COST_PER_M3
+                ),
+                initial_sum=cost_initial_sum,
+                after=cost_after,
+            ),
+            COST_CURRENCY,
+            unit_class=None,
         )
 
         return model
@@ -228,32 +282,37 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         Pushes a copy of the settings with the requested changes applied
         first; the in-memory settings are only updated once the API confirms
         the push succeeded, so a rejected or failed update leaves the UI
-        showing the last value actually applied on the Veolia side.
+        showing the last value actually applied on the Veolia side. Concurrent
+        pushes are serialized by an instance lock: a second call waits for the
+        first to finish and re-reads the state it just applied, so both sets
+        of changes end up applied cumulatively instead of one overwriting the
+        other.
 
         Raises:
             HomeAssistantError: if the settings are unavailable or the API
                 rejects the update.
 
         """
-        settings = self.data.alert_settings
-        if settings is None:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="alert_settings_unavailable",
-            )
-        updated = replace(settings, **changes)
-        LOGGER.debug("Pushing alert settings changes: %s", changes)
-        try:
-            success = await self.client_api.set_alerts_settings(updated)
-        except (VeoliaAPIError, aiohttp.ClientError, TimeoutError) as err:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="set_alert_failed",
-            ) from err
-        if not success:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="set_alert_failed",
-            )
-        self.data.raw.alert_settings = updated
+        async with self._alert_settings_lock:
+            settings = self.data.alert_settings
+            if settings is None:
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="alert_settings_unavailable",
+                )
+            updated = replace(settings, **changes)
+            LOGGER.debug("Pushing alert settings changes: %s", changes)
+            try:
+                success = await self.client_api.set_alerts_settings(updated)
+            except (VeoliaAPIError, aiohttp.ClientError, TimeoutError) as err:
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="set_alert_failed",
+                ) from err
+            if not success:
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="set_alert_failed",
+                )
+            self.data.raw.alert_settings = updated
         await self.async_request_refresh()

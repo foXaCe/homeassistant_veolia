@@ -19,9 +19,13 @@ CONF_COMMUNE: Final = "commune"
 COMMUNE_TYPE_DIRECT: Final = "NON_REDIRIGE"
 COMMUNE_TYPE_REDIRECTED: Final = "REDIRIGE"
 COMMUNE_TYPE_NOT_SERVED: Final = "NON_DESSERVIE"
+COMMUNE_TYPE_MAINTENANCE: Final = "EN_MAINTENANCE"
 
 # Options
 DEFAULT_SCAN_INTERVAL_HOURS: Final = 6
+CONF_COST_PER_M3: Final = "cost_per_m3"
+# Prix du m³ TTC par défaut (tarif indicatif France 2026).
+DEFAULT_COST_PER_M3: Final = 3.81
 
 # Number of consecutive failed refreshes before a repair issue is raised for
 # a persistently unreachable Veolia portal (8 x 6h default scan interval ~=
@@ -39,6 +43,10 @@ COMMUNES_LOOKUP_URL: Final = (
 STATISTIC_NAME_DAILY: Final = "Veolia consommation journalière {account_id}"
 STATISTIC_NAME_MONTHLY: Final = "Veolia consommation mensuelle {account_id}"
 STATISTIC_NAME_INDEX: Final = "Veolia index compteur {account_id}"
+STATISTIC_NAME_COST: Final = "Veolia coût eau {account_id}"
+
+# Currency code of the cost statistic (French portals bill in euros).
+COST_CURRENCY: Final = "EUR"
 
 # API constants keys
 IDX: Final = "index"

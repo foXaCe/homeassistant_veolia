@@ -34,12 +34,15 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     COMMUNE_TYPE_DIRECT,
+    COMMUNE_TYPE_MAINTENANCE,
     COMMUNE_TYPE_NOT_SERVED,
     COMMUNE_TYPE_REDIRECTED,
     COMMUNES_LOOKUP_URL,
     CONF_COMMUNE,
+    CONF_COST_PER_M3,
     CONF_PORTAL_URL,
     CONF_POSTAL_CODE,
+    DEFAULT_COST_PER_M3,
     DEFAULT_SCAN_INTERVAL_HOURS,
     DOMAIN,
     LOGGER,
@@ -193,6 +196,8 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "commune_not_supported"
             elif commune_type == COMMUNE_TYPE_NOT_SERVED:
                 errors["base"] = "commune_not_veolia"
+            elif commune_type == COMMUNE_TYPE_MAINTENANCE:
+                errors["base"] = "commune_maintenance"
             else:
                 errors["base"] = "commune_not_supported"
 
@@ -317,7 +322,10 @@ class VeoliaOptionsFlowHandler(OptionsFlowWithReload):
         """Manage the integration options."""
         if user_input is not None:
             return self.async_create_entry(
-                data={CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL])}
+                data={
+                    CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL]),
+                    CONF_COST_PER_M3: float(user_input[CONF_COST_PER_M3]),
+                }
             )
 
         return self.async_show_form(
@@ -336,6 +344,20 @@ class VeoliaOptionsFlowHandler(OptionsFlowWithReload):
                             step=1,
                             mode=NumberSelectorMode.BOX,
                             unit_of_measurement="h",
+                        )
+                    ),
+                    vol.Required(
+                        CONF_COST_PER_M3,
+                        default=self.config_entry.options.get(
+                            CONF_COST_PER_M3, DEFAULT_COST_PER_M3
+                        ),
+                    ): NumberSelector(
+                        NumberSelectorConfig(
+                            min=0,
+                            max=50,
+                            step=0.01,
+                            mode=NumberSelectorMode.BOX,
+                            unit_of_measurement="€/m³",
                         )
                     ),
                 }
