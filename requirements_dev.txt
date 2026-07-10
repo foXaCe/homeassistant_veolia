@@ -1,4 +1,3 @@
--r requirements.txt
 -r requirements_test.txt
 homeassistant
 mypy>=1.13

@@ -39,7 +39,7 @@ n'est pas encore supporté :
 1. Forkez le dépôt
 2. Créez une branche dédiée : `git checkout -b feat/ma-fonctionnalite`
 3. Installez les hooks : voir [Setup local](#setup-local)
-4. Vérifiez le lint : `ruff check . && ruff format --check .`
+4. Vérifiez le lint : `./scripts/lint` (identique au job CI)
 5. Commitez en suivant les [conventional commits](https://www.conventionalcommits.org/fr/) : `feat: …`, `fix: …`, `docs: …`
 6. Poussez et ouvrez une PR vers `main`
 
