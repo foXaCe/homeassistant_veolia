@@ -6,6 +6,8 @@ from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 from dateutil.relativedelta import relativedelta
+from veolia_api import VeoliaAPI
+from veolia_api.exceptions import VeoliaAPIError, VeoliaAPIInvalidCredentialsError
 
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_USERNAME
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
@@ -15,8 +17,6 @@ from homeassistant.util import dt as dt_util
 
 from .const import CONF_PORTAL_URL, DEFAULT_SCAN_INTERVAL_HOURS, DOMAIN, LOGGER
 from .model import VeoliaModel
-from .veolia_api import VeoliaAPI
-from .veolia_api.exceptions import VeoliaAPIError, VeoliaAPIInvalidCredentialsError
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant

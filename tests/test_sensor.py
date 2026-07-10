@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch
 
 from freezegun.api import FrozenDateTimeFactory
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from veolia_api.exceptions import VeoliaAPIError
 
 from custom_components.veolia.const import DOMAIN
-from custom_components.veolia.veolia_api.exceptions import VeoliaAPIError
 from homeassistant.components.recorder import Recorder
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant

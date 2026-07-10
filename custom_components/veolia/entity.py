@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from veolia_api.portals import DEFAULT_PORTAL_URL
+
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_PORTAL_URL, DOMAIN, NAME
 from .coordinator import VeoliaDataUpdateCoordinator
-from .veolia_api.portals import DEFAULT_PORTAL_URL
 
 if TYPE_CHECKING:
     from homeassistant.helpers.entity import EntityDescription

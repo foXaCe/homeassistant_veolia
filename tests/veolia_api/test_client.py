@@ -1,4 +1,4 @@
-"""Tests for the vendored VeoliaAPI client."""
+"""Tests for the veolia-api-foxace client package."""
 
 from __future__ import annotations
 
@@ -11,17 +11,17 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import (
     AiohttpClientMockResponse,
 )
 import tenacity
-
-from custom_components.veolia.veolia_api import VeoliaAPI
-from custom_components.veolia.veolia_api.constants import LOGIN_URL, TYPE_FRONT
-from custom_components.veolia.veolia_api.exceptions import (
+from veolia_api import VeoliaAPI
+from veolia_api.constants import LOGIN_URL, TYPE_FRONT
+from veolia_api.exceptions import (
     VeoliaAPIGetDataError,
     VeoliaAPIInvalidCredentialsError,
     VeoliaAPISetDataError,
     VeoliaAPITokenError,
 )
-from custom_components.veolia.veolia_api.model import AlertSettings
-from custom_components.veolia.veolia_api.portals import DEFAULT_BACKEND_URL
+from veolia_api.model import AlertSettings
+from veolia_api.portals import DEFAULT_BACKEND_URL
+
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 

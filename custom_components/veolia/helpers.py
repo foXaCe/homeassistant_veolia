@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .veolia_api.model import AlertSettings
+    from veolia_api.model import AlertSettings
 
 
 def is_unoccupied_mode(settings: AlertSettings) -> bool:

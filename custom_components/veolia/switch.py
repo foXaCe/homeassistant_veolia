@@ -13,11 +13,12 @@ from .entity import VeoliaBaseEntity
 from .helpers import is_unoccupied_mode
 
 if TYPE_CHECKING:
+    from veolia_api.model import AlertSettings
+
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
     from .data import VeoliaConfigEntry
-    from .veolia_api.model import AlertSettings
 
 PARALLEL_UPDATES = 0
 
