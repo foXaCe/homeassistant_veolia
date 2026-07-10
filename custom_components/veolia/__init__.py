@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import aiohttp
 from veolia_api import VeoliaAPI
 from veolia_api.exceptions import VeoliaAPIError
 
@@ -62,7 +63,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> 
         )
         try:
             login_ok = await api.login()
-        except VeoliaAPIError as err:
+        except (VeoliaAPIError, aiohttp.ClientError, TimeoutError) as err:
             LOGGER.error(
                 "Cannot migrate %s: Veolia login failed (%s); will retry on "
                 "next restart",

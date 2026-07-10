@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import aiohttp
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from veolia_api.exceptions import VeoliaAPIError, VeoliaAPIInvalidCredentialsError
@@ -169,6 +170,30 @@ async def test_migration_v1_login_failure_returns_false(
 ) -> None:
     """A failed login during migration aborts and leaves the entry to retry."""
     mock_veolia_api.login.side_effect = VeoliaAPIInvalidCredentialsError("bad creds")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=1,
+        unique_id=None,
+        data=dict(MOCK_CONFIG_ENTRY_DATA),
+        entry_id="legacy_entry_id",
+    )
+    entry.add_to_hass(hass)
+
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.version == 1
+    assert entry.state is ConfigEntryState.MIGRATION_ERROR
+
+
+async def test_migration_v1_login_network_error_returns_false(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """A raw network error during login aborts and leaves the entry to retry."""
+    mock_veolia_api.login.side_effect = aiohttp.ClientError("boom")
     entry = MockConfigEntry(
         domain=DOMAIN,
         version=1,

@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from unittest.mock import MagicMock
 
+import aiohttp
 from freezegun.api import FrozenDateTimeFactory
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -135,6 +136,22 @@ async def test_coordinator_update_failed_on_api_error(
     assert isinstance(coordinator.last_exception, UpdateFailed)
 
 
+async def test_coordinator_update_failed_on_network_error(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """A raw network error escaping the client is surfaced as UpdateFailed."""
+    mock_config_entry.add_to_hass(hass)
+    coordinator = VeoliaDataUpdateCoordinator(hass, mock_config_entry)
+    mock_veolia_api.fetch_all_data.side_effect = aiohttp.ClientError("boom")
+
+    await coordinator.async_refresh()
+
+    assert coordinator.last_update_success is False
+    assert isinstance(coordinator.last_exception, UpdateFailed)
+
+
 async def test_update_interval_from_options(
     hass: HomeAssistant,
 ) -> None:
@@ -185,6 +202,27 @@ async def test_async_set_alert_settings_success_pushes_and_refreshes(
     await coordinator.async_shutdown()
 
 
+async def test_async_set_alert_settings_success_applies_in_memory(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """The validated copy is only assigned in memory once the API confirms it."""
+    mock_config_entry.add_to_hass(hass)
+    coordinator = VeoliaDataUpdateCoordinator(hass, mock_config_entry)
+    await coordinator.async_refresh()
+    assert coordinator.data.alert_settings.daily_notif_sms is False
+
+    await coordinator.async_set_alert_settings(daily_notif_sms=True)
+    await hass.async_block_till_done()
+
+    assert coordinator.data.alert_settings.daily_notif_sms is True
+
+    # The coordinator was created outside of the normal config entry setup
+    # lifecycle, so nothing will cancel its debounced-refresh timer for us.
+    await coordinator.async_shutdown()
+
+
 async def test_async_set_alert_settings_rejected_raises(
     hass: HomeAssistant,
     mock_config_entry: MockConfigEntry,
@@ -198,6 +236,10 @@ async def test_async_set_alert_settings_rejected_raises(
 
     with pytest.raises(HomeAssistantError):
         await coordinator.async_set_alert_settings(daily_enabled=False)
+
+    # The rejected change must not stick in memory: the UI keeps showing the
+    # last value actually applied on the Veolia side.
+    assert coordinator.data.alert_settings.daily_enabled is True
 
 
 async def test_async_set_alert_settings_api_error_raises(
@@ -213,6 +255,10 @@ async def test_async_set_alert_settings_api_error_raises(
 
     with pytest.raises(HomeAssistantError):
         await coordinator.async_set_alert_settings(daily_enabled=False)
+
+    # The failed change must not stick in memory: the UI keeps showing the
+    # last value actually applied on the Veolia side.
+    assert coordinator.data.alert_settings.daily_enabled is True
 
 
 async def test_async_set_alert_settings_unavailable_raises(

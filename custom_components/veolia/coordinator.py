@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
+import aiohttp
 from veolia_api import VeoliaAPI
 from veolia_api.exceptions import VeoliaAPIError, VeoliaAPIInvalidCredentialsError
 
@@ -68,6 +70,9 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         except VeoliaAPIError as exception:
             # Transient error (network, rate limit, API down) → retry next cycle.
             raise UpdateFailed(exception) from exception
+        except (aiohttp.ClientError, TimeoutError) as exception:
+            # Network/transport error that escaped the client's retry layer.
+            raise UpdateFailed(exception) from exception
 
         # Mark the initial historical fetch done only after it succeeded.
         self._initial_historical_fetch = True
@@ -76,8 +81,10 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
     async def async_set_alert_settings(self, **changes: bool | int) -> None:
         """Apply alert-settings changes and push them to the Veolia API.
 
-        Mutates the in-memory settings first so the UI reflects the change
-        immediately, pushes them to the API, then requests a refresh.
+        Pushes a copy of the settings with the requested changes applied
+        first; the in-memory settings are only updated once the API confirms
+        the push succeeded, so a rejected or failed update leaves the UI
+        showing the last value actually applied on the Veolia side.
 
         Raises:
             HomeAssistantError: if the settings are unavailable or the API
@@ -90,12 +97,11 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
                 translation_domain=DOMAIN,
                 translation_key="alert_settings_unavailable",
             )
-        for field, value in changes.items():
-            setattr(settings, field, value)
+        updated = replace(settings, **changes)
         LOGGER.debug("Pushing alert settings changes: %s", changes)
         try:
-            success = await self.client_api.set_alerts_settings(settings)
-        except VeoliaAPIError as err:
+            success = await self.client_api.set_alerts_settings(updated)
+        except (VeoliaAPIError, aiohttp.ClientError, TimeoutError) as err:
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="set_alert_failed",
@@ -105,4 +111,5 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
                 translation_domain=DOMAIN,
                 translation_key="set_alert_failed",
             )
+        self.data.raw.alert_settings = updated
         await self.async_request_refresh()
