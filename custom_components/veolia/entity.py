@@ -37,7 +37,7 @@ class VeoliaBaseEntity(CoordinatorEntity[VeoliaDataUpdateCoordinator]):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, account_id)},
             manufacturer=NAME,
-            name=f"{NAME} {data.id_abonnement}",
+            name=NAME,
             entry_type=DeviceEntryType.SERVICE,
             serial_number=data.numero_compteur,
             configuration_url=f"https://{portal}",

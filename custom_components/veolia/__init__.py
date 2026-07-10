@@ -54,7 +54,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> 
         return False
 
     if entry.version == 1:
-        LOGGER.info("Migrating config entry %s from version 1 to 2", entry.title)
+        LOGGER.info("Migrating config entry %s from version 1 to 2", entry.entry_id)
         api = VeoliaAPI(
             username=entry.data[CONF_USERNAME],
             password=entry.data[CONF_PASSWORD],
@@ -67,7 +67,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> 
             LOGGER.error(
                 "Cannot migrate %s: Veolia login failed (%s); will retry on "
                 "next restart",
-                entry.title,
+                entry.entry_id,
                 err,
             )
             return False
@@ -75,7 +75,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> 
             LOGGER.error(
                 "Cannot migrate %s: Veolia account id unavailable; will retry "
                 "on next restart",
-                entry.title,
+                entry.entry_id,
             )
             return False
         account_id = str(api.account_data.id_abonnement)
@@ -108,7 +108,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> 
         hass.config_entries.async_update_entry(entry, unique_id=account_id, version=2)
         LOGGER.info(
             "Migration of %s to version 2 done (account id %s)",
-            entry.title,
+            entry.entry_id,
             account_id,
         )
 

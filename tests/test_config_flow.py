@@ -167,6 +167,25 @@ async def test_flow_no_communes_found(
     assert result["errors"] == {"base": "no_communes_found"}
 
 
+async def test_flow_unexpected_communes_payload(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """A non-list communes payload shows no_communes_found instead of raising."""
+    aioclient_mock.get(COMMUNES_LOOKUP_URL, json={"error": "oops"})
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"postal_code": MOCK_POSTAL_CODE}
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "user"
+    assert result["errors"] == {"base": "no_communes_found"}
+
+
 async def test_flow_cannot_connect(
     recorder_mock: Recorder,
     hass: HomeAssistant,
@@ -330,6 +349,31 @@ async def test_reauth_flow_success(
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reauth_successful"
     assert entry.data[CONF_PASSWORD] == "new-password"
+
+
+async def test_reauth_flow_unique_id_mismatch(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """A reauth resolving to a different account id aborts without changing the password."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=2,
+        unique_id="some-other-account-id",
+        data={**MOCK_CONFIG_ENTRY_DATA, CONF_PASSWORD: "old-password"},
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_PASSWORD: "new-password"}
+    )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "unique_id_mismatch"
+    assert entry.data[CONF_PASSWORD] == "old-password"
 
 
 async def test_reauth_flow_invalid_credentials(
