@@ -9,6 +9,43 @@ Ce fichier est maintenu automatiquement par
 [release-please](https://github.com/googleapis/release-please) à partir des
 conventional commits.
 
+## [3.0.0](https://github.com/foXaCe/homeassistant_veolia/compare/v2.4.0...v3.0.0) (2026-07-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* anchored external statistics, config flow hardening and repair issues ([#13](https://github.com/foXaCe/homeassistant_veolia/issues/13))
+
+### Added
+
+* anchored external statistics, config flow hardening and repair issues ([#13](https://github.com/foXaCe/homeassistant_veolia/issues/13)) ([cc880a0](https://github.com/foXaCe/homeassistant_veolia/commit/cc880a0bae754dc22280d13eb2feb950887124d8))
+* complete integration overhaul (coordinator, entities, unique_id migration, tests 98%) ([62c0742](https://github.com/foXaCe/homeassistant_veolia/commit/62c0742a5a34f9c4775c47b5b06da037c7a99d6c))
+* config entry diagnostics with sensitive-data redaction ([62c0742](https://github.com/foXaCe/homeassistant_veolia/commit/62c0742a5a34f9c4775c47b5b06da037c7a99d6c))
+* configurable update interval via an options flow (1-24h) ([62c0742](https://github.com/foXaCe/homeassistant_veolia/commit/62c0742a5a34f9c4775c47b5b06da037c7a99d6c))
+* integration overhaul — system health, platinum quality scale, upstreamed API tests ([#14](https://github.com/foXaCe/homeassistant_veolia/issues/14)) ([3d79287](https://github.com/foXaCe/homeassistant_veolia/commit/3d79287b548d0ed419c8eddcb79dbf8a8415fb71))
+* reconfigure flow to update credentials from the UI ([62c0742](https://github.com/foXaCe/homeassistant_veolia/commit/62c0742a5a34f9c4775c47b5b06da037c7a99d6c))
+* unique_ids migrated to the Veolia subscription id (automatic v1→v2 migration, entity_ids preserved) ([62c0742](https://github.com/foXaCe/homeassistant_veolia/commit/62c0742a5a34f9c4775c47b5b06da037c7a99d6c))
+
+
+### Fixed
+
+* binary_sensor/switch/text entities were polled instead of coordinator-driven and ignored API failures in their availability ([62c0742](https://github.com/foXaCe/homeassistant_veolia/commit/62c0742a5a34f9c4775c47b5b06da037c7a99d6c))
+* daily/monthly alert threshold was sent as a string instead of an int ([62c0742](https://github.com/foXaCe/homeassistant_veolia/commit/62c0742a5a34f9c4775c47b5b06da037c7a99d6c))
+* meter-index recorder statistics were never imported (# NOT WORKING hook re-enabled) ([62c0742](https://github.com/foXaCe/homeassistant_veolia/commit/62c0742a5a34f9c4775c47b5b06da037c7a99d6c))
+* **security:** redact password from request-body debug logs ([7443b09](https://github.com/foXaCe/homeassistant_veolia/commit/7443b0903a87157b299e1594b5a4a7af8e57474c))
+* vendored client robustness (raw-int timeout ValueError, 401 handling, token expiry margin, typed AlertSettings defaults) ([62c0742](https://github.com/foXaCe/homeassistant_veolia/commit/62c0742a5a34f9c4775c47b5b06da037c7a99d6c))
+
+
+### Changed
+
+* EntityDescription pattern on all platforms, modular pure-function model, strict typing (mypy --strict) incl. the vendored client ([62c0742](https://github.com/foXaCe/homeassistant_veolia/commit/62c0742a5a34f9c4775c47b5b06da037c7a99d6c))
+* replace vendored client with the veolia-api-foxace PyPI package ([#12](https://github.com/foXaCe/homeassistant_veolia/issues/12)) ([7a5a32b](https://github.com/foXaCe/homeassistant_veolia/commit/7a5a32bca16c8d300822d314ad01ebd416f64360))
+
+
+### Documentation
+
+* remove duplicated unreleased changelog section (release-please owns it) ([fa711e5](https://github.com/foXaCe/homeassistant_veolia/commit/fa711e531dcc78c24b1fb9a1e9c9c0903f221a57))
+
 ## [2.4.0](https://github.com/foXaCe/homeassistant_veolia/compare/v2.3.0...v2.4.0) (2026-07-09)
 
 
