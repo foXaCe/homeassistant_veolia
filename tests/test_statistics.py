@@ -228,6 +228,56 @@ async def test_current_month_value_updates_on_reimport(
     assert stats[0]["sum"] == pytest.approx(4.2 - 1.0 + 2.5)
 
 
+async def test_dst_transition_keeps_local_midnight_starts(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Rows spanning the CET→CEST spring-forward keep true local midnights.
+
+    2026-03-29 is the EU spring-forward day: every row must start at
+    00:00 local time, so the UTC gap between the 29th and the 30th is
+    only 23 hours and the UTC offset changes from +01:00 to +02:00.
+    """
+    await hass.config.async_set_time_zone("Europe/Paris")
+    freezer.move_to("2026-04-01 12:00:00")
+    mock_veolia_api.account_data.daily_consumption = [
+        {"date_releve": "2026-03-28", "consommation": {"litre": 100}},
+        {"date_releve": "2026-03-29", "consommation": {"litre": 110}},
+        {"date_releve": "2026-03-30", "consommation": {"litre": 120}},
+    ]
+    mock_config_entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.veolia.statistics.get_last_statistics",
+            side_effect=_no_anchor,
+        ),
+        patch(
+            "custom_components.veolia.statistics.async_add_external_statistics"
+        ) as mock_import,
+    ):
+        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    call = next(
+        c
+        for c in mock_import.call_args_list
+        if c.args[1]["statistic_id"] == DAILY_STATISTIC_ID
+    )
+    starts = [row["start"] for row in call.args[2]]
+    assert all(start.tzinfo is not None for start in starts)
+    assert [dt_util.as_local(start).hour for start in starts] == [0, 0, 0]
+    # Same-tzinfo subtraction is wall-clock arithmetic; convert to UTC to
+    # measure the real elapsed time across the transition.
+    utc_starts = [dt_util.as_utc(start) for start in starts]
+    assert (utc_starts[1] - utc_starts[0]).total_seconds() == 24 * 3600
+    assert (utc_starts[2] - utc_starts[1]).total_seconds() == 23 * 3600
+    assert starts[0].utcoffset() != starts[2].utcoffset()
+
+
 async def test_no_op_when_no_data_on_or_after_rewound_anchor(
     recorder_mock: Recorder,
     hass: HomeAssistant,
