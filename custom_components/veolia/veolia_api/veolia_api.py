@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Coroutine, Iterator
 from datetime import UTC, date, datetime, timedelta
 from http import HTTPStatus
 import itertools
 import logging
 import re
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlencode
 
 import aiohttp
@@ -40,6 +39,9 @@ from .exceptions import (
 )
 from .model import AlertSettings, VeoliaAccountData
 from .portals import get_portal
+
+if TYPE_CHECKING:
+    from collections.abc import Coroutine, Iterator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -72,7 +74,7 @@ class VeoliaAPI:
         self.account_data = VeoliaAccountData()
         self._owns_session = session is None
         self.session = session or aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=TIMEOUT)
+            timeout=aiohttp.ClientTimeout(total=TIMEOUT),
         )
 
     async def close(self) -> None:
@@ -80,46 +82,27 @@ class VeoliaAPI:
         if self._owns_session and not self.session.closed:
             await self.session.close()
 
-    @retry(
-        reraise=True,
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=1, min=1, max=16),
-        retry=retry_if_exception_type((aiohttp.ClientError, VeoliaAPIRateLimitError)),
-    )
-    async def _send_request(
-        self,
+    @staticmethod
+    def _log_request(
         url: str,
         method: str,
-        params: dict[str, Any] | None = None,
-        json_data: dict[str, Any] | None = None,
-        is_login: bool = False,
-    ) -> aiohttp.ClientResponse:
-        """Make an HTTP request with support for params, headers and JSON body."""
+        params: dict[str, Any] | None,
+        json_data: dict[str, Any] | None,
+        headers: dict[str, str],
+    ) -> None:
+        """Debug-log a request with credentials redacted.
+
+        The Cognito login payload carries the password in ``AuthParameters``;
+        headers carry the bearer token.
+        """
         safe_params = {**params} if params else {}
         if "password" in safe_params:
             safe_params["password"] = "REDACTED"
 
-        req_headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (X11; Linux x86_64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/140.0.0.0 Safari/537.36"
-            ),
-            "Accept": "*/*",
-        }
-
-        if self.account_data.access_token:
-            req_headers["Authorization"] = f"Bearer {self.account_data.access_token}"
-
-        if method == POST:
-            req_headers["Content-Type"] = "application/json"
-
-        safe_headers = {**req_headers}
+        safe_headers = {**headers}
         if "Authorization" in safe_headers:
             safe_headers["Authorization"] = "REDACTED"
 
-        # Redact credentials from the JSON body (Cognito login payload carries the
-        # password in AuthParameters) before logging.
         safe_json = None
         if json_data is not None:
             safe_json = {**json_data}
@@ -138,6 +121,38 @@ class VeoliaAPI:
             safe_headers,
             safe_json,
         )
+
+    @retry(
+        reraise=True,
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=1, max=16),
+        retry=retry_if_exception_type((aiohttp.ClientError, VeoliaAPIRateLimitError)),
+    )
+    async def _send_request(
+        self,
+        url: str,
+        method: str,
+        params: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | None = None,
+        is_login: bool = False,
+    ) -> aiohttp.ClientResponse:
+        """Make an HTTP request with support for params, headers and JSON body."""
+        req_headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/140.0.0.0 Safari/537.36"
+            ),
+            "Accept": "*/*",
+        }
+
+        if self.account_data.access_token:
+            req_headers["Authorization"] = f"Bearer {self.account_data.access_token}"
+
+        if method == POST:
+            req_headers["Content-Type"] = "application/json"
+
+        self._log_request(url, method, params, json_data, req_headers)
 
         kwargs: dict[str, Any] = {
             "headers": req_headers,
@@ -309,7 +324,7 @@ class VeoliaAPI:
             .get("abonnements", [{}])[0]
         )
         self.account_data.adresse_de_branchement = abonnement.get(
-            "adresse_de_branchement"
+            "adresse_de_branchement",
         )
         self.account_data.emplacement_compteur = abonnement.get("emplacement_compteur")
         self.account_data.libelle_contrat = abonnement.get("libelle_contrat")
@@ -328,7 +343,7 @@ class VeoliaAPI:
         self.account_data.numero_pds = facturation_data.get("numero_pds")
         self.account_data.solde = facturation_data.get("solde")
         self.account_data.dernier_index_releve = facturation_data.get(
-            "dernier_index_releve"
+            "dernier_index_releve",
         )
         self.account_data.date_index_releve = facturation_data.get("date_index_releve")
         self.account_data.mode_releve = facturation_data.get("mode_releve")
