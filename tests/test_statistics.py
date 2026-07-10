@@ -182,6 +182,56 @@ async def test_continuity_rewinds_and_reimports_last_row(
     assert stats[1]["sum"] == stats[0]["sum"] + 120
 
 
+async def test_sum_does_not_regress_when_anchor_day_vanishes(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """A vanished anchor day falls back to strict anchoring instead of regressing.
+
+    Anchor: 2026-07-03, sum 450.0 (100 + 150 + 200), state 200.0 — as if a
+    prior import already summed 07-01, 07-02 and 07-03. The portal's next
+    fetch no longer returns 07-03 (a provisional day dropped or shifted)
+    but does return a new 07-04 row. Rewinding onto the vanished 07-03 row
+    would restart the running sum from 450 - 200 = 250 and re-derive it
+    from only the 07-04 row (250 + 120 = 370 < 450): a silent regression
+    that drops the already-counted 200 L. The guard must instead fall back
+    to strict anchoring (initial_sum = 450, after = 07-03), so the 07-04
+    row imports at 450 + 120 = 570 and no imported row is below 450.
+    """
+    freezer.move_to("2026-07-08 12:00:00")
+    mock_veolia_api.account_data.daily_consumption = [
+        {"date_releve": "2026-07-04", "consommation": {"litre": 120}},
+    ]
+    mock_config_entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.veolia.statistics.get_last_statistics",
+            side_effect=_anchor_at(DAILY_STATISTIC_ID, date(2026, 7, 3), 450.0, 200.0),
+        ),
+        patch(
+            "custom_components.veolia.statistics.async_add_external_statistics"
+        ) as mock_import,
+    ):
+        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    call = next(
+        c
+        for c in mock_import.call_args_list
+        if c.args[1]["statistic_id"] == DAILY_STATISTIC_ID
+    )
+    stats = call.args[2]
+    assert [row["start"] for row in stats] == [
+        dt_util.start_of_local_day(date(2026, 7, 4))
+    ]
+    assert stats[0]["sum"] == 570.0
+    assert all(row["sum"] >= 450.0 for row in stats)
+
+
 async def test_current_month_value_updates_on_reimport(
     recorder_mock: Recorder,
     hass: HomeAssistant,

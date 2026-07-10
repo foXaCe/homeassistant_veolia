@@ -93,6 +93,19 @@ def _sorted_unique_by_date(
     return sorted(by_date.items())
 
 
+def _record_dates(
+    records: list[dict[str, Any]],
+    date_fn: Callable[[dict[str, Any]], date | None] | None = None,
+) -> set[date]:
+    """Return the set of calendar dates present in ``records``.
+
+    Uses the same date extraction and deduplication as
+    ``_sorted_unique_by_date`` so the anchor-presence check in the
+    coordinator sees exactly the dates the builders will iterate.
+    """
+    return {d for d, _ in _sorted_unique_by_date(records, date_fn)}
+
+
 def _monthly_record_date(rec: dict[str, Any]) -> date | None:
     """Return the first-of-month calendar date for a monthly record."""
     year = rec.get(YEAR)
