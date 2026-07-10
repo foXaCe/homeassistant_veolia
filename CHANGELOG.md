@@ -9,6 +9,25 @@ Ce fichier est maintenu automatiquement par
 [release-please](https://github.com/googleapis/release-please) à partir des
 conventional commits.
 
+## [4.0.0](https://github.com/foXaCe/homeassistant_veolia/compare/v3.0.2...v4.0.0) (2026-07-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove personal identifiers from billing_index sensor attributes ([#22](https://github.com/foXaCe/homeassistant_veolia/issues/22))
+
+### Added
+
+* add cost external statistic with configurable price per m³ ([#21](https://github.com/foXaCe/homeassistant_veolia/issues/21)) ([5f2ba73](https://github.com/foXaCe/homeassistant_veolia/commit/5f2ba735f655889a7e70ebf16cd47a89d407cf61))
+
+
+### Fixed
+
+* dedicated maintenance error in the commune flow and info.md resync ([#24](https://github.com/foXaCe/homeassistant_veolia/issues/24)) ([e942421](https://github.com/foXaCe/homeassistant_veolia/commit/e942421e38142eac03227ea1b74c949f0d3fb284))
+* guard the statistics rewind against a vanished anchor row ([#19](https://github.com/foXaCe/homeassistant_veolia/issues/19)) ([dd7b7e2](https://github.com/foXaCe/homeassistant_veolia/commit/dd7b7e2df4267d3918d1b3cdc9443f17c350a840))
+* remove personal identifiers from billing_index sensor attributes ([#22](https://github.com/foXaCe/homeassistant_veolia/issues/22)) ([ddbb1fd](https://github.com/foXaCe/homeassistant_veolia/commit/ddbb1fd0a922eee71af897a6189100f07c3e0fb1))
+* serialize concurrent alert-settings writes with a lock ([#23](https://github.com/foXaCe/homeassistant_veolia/issues/23)) ([f67a5f7](https://github.com/foXaCe/homeassistant_veolia/commit/f67a5f72bcf393b2c165c40553656bb64a228eff))
+
 ## [3.0.2](https://github.com/foXaCe/homeassistant_veolia/compare/v3.0.1...v3.0.2) (2026-07-10)
 
 
