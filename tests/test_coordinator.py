@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Generator
 from datetime import date, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -11,6 +12,7 @@ from freezegun.api import FrozenDateTimeFactory
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from veolia_api.exceptions import VeoliaAPIError, VeoliaAPIInvalidCredentialsError
+from veolia_api.model import AlertSettings
 
 from custom_components.veolia.const import (
     CONF_COST_PER_M3,
@@ -31,7 +33,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from .const import MOCK_ACCOUNT_ID, MOCK_CONFIG_ENTRY_DATA
+from .const import MOCK_ACCOUNT_ID, MOCK_CONFIG_ENTRY_DATA, build_alert_settings
 
 
 @pytest.fixture
@@ -465,6 +467,67 @@ async def test_async_set_alert_settings_success_applies_in_memory(
     await hass.async_block_till_done()
 
     assert coordinator.data.alert_settings.daily_notif_sms is True
+
+    # The coordinator was created outside of the normal config entry setup
+    # lifecycle, so nothing will cancel its debounced-refresh timer for us.
+    await coordinator.async_shutdown()
+
+
+async def test_async_set_alert_settings_serializes_concurrent_calls(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+    mock_statistics_anchor: AsyncMock,
+) -> None:
+    """Concurrent pushes are serialized instead of overwriting each other.
+
+    The client POSTs the full settings payload on every push. Without the
+    lock, two concurrent calls would both read the same starting state and
+    the second (last writer) would push a payload missing the first call's
+    change. With the lock, the second call waits for the first to finish and
+    re-reads the state it just applied, so both changes end up applied
+    cumulatively.
+    """
+    mock_veolia_api.account_data.alert_settings = build_alert_settings(
+        daily_notif_email=False, monthly_notif_email=False
+    )
+    mock_config_entry.add_to_hass(hass)
+    coordinator = VeoliaDataUpdateCoordinator(hass, mock_config_entry)
+    await coordinator.async_refresh()
+    assert coordinator.data.alert_settings.daily_notif_email is False
+    assert coordinator.data.alert_settings.monthly_notif_email is False
+
+    release_first = asyncio.Event()
+
+    async def delayed_push(_settings: AlertSettings) -> bool:
+        # Holds whichever call is currently inside the lock open, so the
+        # second call has time to queue up behind it before either one
+        # completes.
+        await release_first.wait()
+        return True
+
+    mock_veolia_api.set_alerts_settings.side_effect = delayed_push
+
+    gather_task = asyncio.gather(
+        coordinator.async_set_alert_settings(daily_notif_email=True),
+        coordinator.async_set_alert_settings(monthly_notif_email=True),
+    )
+    # Let both tasks start: the first acquires the lock and blocks inside
+    # the push, the second blocks waiting for the lock.
+    await asyncio.sleep(0)
+    release_first.set()
+    await gather_task
+    await hass.async_block_till_done()
+
+    assert mock_veolia_api.set_alerts_settings.await_count == 2
+    second_pushed_settings = mock_veolia_api.set_alerts_settings.call_args_list[1].args[
+        0
+    ]
+    assert second_pushed_settings.daily_notif_email is True
+    assert second_pushed_settings.monthly_notif_email is True
+
+    assert coordinator.data.alert_settings.daily_notif_email is True
+    assert coordinator.data.alert_settings.monthly_notif_email is True
 
     # The coordinator was created outside of the normal config entry setup
     # lifecycle, so nothing will cancel its debounced-refresh timer for us.
