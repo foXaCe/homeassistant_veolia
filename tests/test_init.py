@@ -6,13 +6,10 @@ from unittest.mock import MagicMock
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from veolia_api.exceptions import VeoliaAPIError, VeoliaAPIInvalidCredentialsError
 
 from custom_components.veolia import async_migrate_entry
 from custom_components.veolia.const import DOMAIN
-from custom_components.veolia.veolia_api.exceptions import (
-    VeoliaAPIError,
-    VeoliaAPIInvalidCredentialsError,
-)
 from homeassistant.components.recorder import Recorder
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant

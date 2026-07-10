@@ -6,10 +6,10 @@ from unittest.mock import MagicMock
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from veolia_api.exceptions import VeoliaAPISetDataError
 
 from custom_components.veolia.const import DOMAIN
 from custom_components.veolia.switch import SWITCHES, VeoliaSwitch
-from custom_components.veolia.veolia_api.exceptions import VeoliaAPISetDataError
 from homeassistant.components.recorder import Recorder
 from homeassistant.const import (
     ATTR_ENTITY_ID,

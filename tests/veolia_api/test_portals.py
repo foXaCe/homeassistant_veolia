@@ -1,10 +1,9 @@
-"""Tests for the vendored Veolia portals registry."""
+"""Tests for the veolia-api-foxace portals registry."""
 
 from __future__ import annotations
 
 import pytest
-
-from custom_components.veolia.veolia_api.portals import (
+from veolia_api.portals import (
     DEFAULT_BACKEND_URL,
     DEFAULT_PORTAL_URL,
     VEOLIA_PORTAL_CLIENTS,

@@ -5,9 +5,9 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from veolia_api.exceptions import VeoliaAPIError
 
 from custom_components.veolia.diagnostics import async_get_config_entry_diagnostics
-from custom_components.veolia.veolia_api.exceptions import VeoliaAPIError
 from homeassistant.components.diagnostics.const import REDACTED
 from homeassistant.components.recorder import Recorder
 from homeassistant.core import HomeAssistant

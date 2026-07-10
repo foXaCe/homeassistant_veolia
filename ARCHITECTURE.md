@@ -8,7 +8,7 @@ Vue d'ensemble du fonctionnement interne de l'intégration `veolia`.
 Portail Veolia (cloud)
         │  HTTPS (session partagée Home Assistant, timeout 15 s, retry tenacity)
         ▼
-veolia_api/ (client vendoré : Cognito, portails, consommation, alertes)
+veolia_api (paquet PyPI veolia-api-foxace : Cognito, portails, consommation, alertes)
         │
         ▼
 VeoliaDataUpdateCoordinator (coordinator.py, intervalle configurable, défaut 6 h)
@@ -42,7 +42,6 @@ Entités : sensor (9) / binary_sensor (3) / switch (3) / text (2)
 | `const.py`         | Toutes les constantes (`Final`), zéro string magique ailleurs             |
 | `icons.json`       | Icônes (y compris icônes par état on/off)                                 |
 | `strings.json`     | Source de vérité des traductions ; `translations/en.json` en est la copie |
-| `veolia_api/`      | Client Veolia vendoré (fork corrigé) : `veolia_api.py`, `portals.py` (registre `hostname → client_id + backend`), `constants.py`, `model.py`, `exceptions.py` — voir `NOTICE.md` |
 
 ## Ajouter une entité
 
@@ -70,16 +69,15 @@ Entités : sensor (9) / binary_sensor (3) / switch (3) / text (2)
   les statistiques Home Assistant (dashboard Énergie) — les données Veolia arrivent
   avec au minimum 24 h de retard. Les statistiques sont réimportées à chaque refresh
   du coordinator.
-- **Client API vendoré** : la logique d'authentification/portails vit dans le client
-  [veolia-api](https://github.com/foXaCe/veolia-api) (fork), **embarqué** sous
-  `custom_components/veolia/veolia_api/` (voir son `NOTICE.md`). Il est vendoré car
-  hassfest n'accepte que des dépendances PyPI dans `manifest.json` et le fork corrigé
-  n'est pas publié sur PyPI. Seule dépendance tierce : `tenacity` (dans `manifest.json`).
-  Le vendored est soumis au même niveau d'exigence que le reste (ruff + mypy --strict) ;
-  reporter les correctifs sur le fork upstream.
+- **Client API** : la logique d'authentification/portails vit dans le paquet PyPI
+  [`veolia-api-foxace`](https://pypi.org/project/veolia-api-foxace/) (module `veolia_api`),
+  publié depuis le fork [foXaCe/veolia-api](https://github.com/foXaCe/veolia-api) et
+  déclaré dans `manifest.json` (`requirements`). Les évolutions du client se font dans le
+  fork, se publient sur PyPI, puis se consomment ici via un bump de version épinglée
+  (Renovate s'en charge).
 - **Portails multiples** : le config flow résout la commune via l'API de référence des
   communes, puis choisit le portail (`CONF_PORTAL_URL`). Chaque portail a son propre
-  `client_id` Cognito **et** son backend de données ; le client vendoré résout les deux
+  `client_id` Cognito **et** son backend de données ; le client résout les deux
   par portail (`VEOLIA_PORTALS`). C'est ce qui permet les portails à backend dédié comme
   `www.ea-pm.fr` (Perpignan Méditerranée Métropole → `prd-ael-sirius-pmm-backend`).
 - **Erreurs** : `VeoliaAPIInvalidCredentialsError` → `ConfigEntryAuthFailed` (reauth),

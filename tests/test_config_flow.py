@@ -7,11 +7,9 @@ from unittest.mock import MagicMock
 import aiohttp
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from veolia_api.exceptions import VeoliaAPIInvalidCredentialsError
 
 from custom_components.veolia.const import COMMUNES_LOOKUP_URL, CONF_PORTAL_URL, DOMAIN
-from custom_components.veolia.veolia_api.exceptions import (
-    VeoliaAPIInvalidCredentialsError,
-)
 from homeassistant import config_entries
 from homeassistant.components.recorder import Recorder
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME

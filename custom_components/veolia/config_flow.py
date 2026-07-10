@@ -6,6 +6,9 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import aiohttp
+from veolia_api import VeoliaAPI
+from veolia_api.exceptions import VeoliaAPIInvalidCredentialsError
+from veolia_api.portals import VEOLIA_PORTAL_CLIENTS
 import voluptuous as vol
 
 from homeassistant.config_entries import (
@@ -41,9 +44,6 @@ from .const import (
     DOMAIN,
     LOGGER,
 )
-from .veolia_api import VeoliaAPI
-from .veolia_api.exceptions import VeoliaAPIInvalidCredentialsError
-from .veolia_api.portals import VEOLIA_PORTAL_CLIENTS
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

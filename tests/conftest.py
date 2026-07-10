@@ -51,7 +51,7 @@ def mock_config_entry() -> MockConfigEntry:
 
 @pytest.fixture
 def mock_veolia_api() -> Generator[MagicMock]:
-    """Mock the vendored VeoliaAPI client at its three usage points.
+    """Mock the VeoliaAPI client at its three usage points.
 
     The class is patched in coordinator.py (runtime), config_flow.py (config
     and options flows) and __init__.py (v1 -> v2 migration), each returning

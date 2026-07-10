@@ -8,14 +8,11 @@ from unittest.mock import MagicMock
 from freezegun.api import FrozenDateTimeFactory
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from veolia_api.exceptions import VeoliaAPIError, VeoliaAPIInvalidCredentialsError
 
 from custom_components.veolia.const import DEFAULT_SCAN_INTERVAL_HOURS
 from custom_components.veolia.coordinator import VeoliaDataUpdateCoordinator
 from custom_components.veolia.model import VeoliaModel
-from custom_components.veolia.veolia_api.exceptions import (
-    VeoliaAPIError,
-    VeoliaAPIInvalidCredentialsError,
-)
 from homeassistant.components.recorder import Recorder
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant

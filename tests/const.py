@@ -5,7 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from custom_components.veolia.veolia_api.model import AlertSettings, VeoliaAccountData
+from veolia_api.model import AlertSettings, VeoliaAccountData
 
 MOCK_USERNAME = "test@example.com"
 MOCK_PASSWORD = "secret"
