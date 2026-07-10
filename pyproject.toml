@@ -192,10 +192,6 @@ warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
 
-[[tool.mypy.overrides]]
-module = "tests.*"
-disallow_untyped_defs = false
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

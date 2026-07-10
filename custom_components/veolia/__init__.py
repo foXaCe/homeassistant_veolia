@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
+import aiohttp
 from veolia_api import VeoliaAPI
 from veolia_api.exceptions import VeoliaAPIError
+from veolia_api.portals import VEOLIA_PORTAL_CLIENTS
 
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.exceptions import ConfigEntryError
+from homeassistant.helpers import (
+    device_registry as dr,
+    entity_registry as er,
+    issue_registry as ir,
+)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 
@@ -27,6 +34,25 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> bool:
     """Set up Veolia from a config entry."""
+    portal_url = entry.data.get(CONF_PORTAL_URL)
+    issue_id = f"unknown_portal_{entry.entry_id}"
+    if portal_url is not None and portal_url not in VEOLIA_PORTAL_CLIENTS:
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            issue_id,
+            is_fixable=False,
+            severity=ir.IssueSeverity.ERROR,
+            translation_key="unknown_portal",
+            translation_placeholders={"portal": portal_url},
+        )
+        raise ConfigEntryError(
+            translation_domain=DOMAIN,
+            translation_key="unknown_portal",
+            translation_placeholders={"portal": portal_url},
+        )
+    ir.async_delete_issue(hass, DOMAIN, issue_id)
+
     coordinator = VeoliaDataUpdateCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
 
@@ -53,7 +79,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> 
         return False
 
     if entry.version == 1:
-        LOGGER.info("Migrating config entry %s from version 1 to 2", entry.title)
+        LOGGER.info("Migrating config entry %s from version 1 to 2", entry.entry_id)
         api = VeoliaAPI(
             username=entry.data[CONF_USERNAME],
             password=entry.data[CONF_PASSWORD],
@@ -62,11 +88,11 @@ async def async_migrate_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> 
         )
         try:
             login_ok = await api.login()
-        except VeoliaAPIError as err:
+        except (VeoliaAPIError, aiohttp.ClientError, TimeoutError) as err:
             LOGGER.error(
                 "Cannot migrate %s: Veolia login failed (%s); will retry on "
                 "next restart",
-                entry.title,
+                entry.entry_id,
                 err,
             )
             return False
@@ -74,7 +100,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> 
             LOGGER.error(
                 "Cannot migrate %s: Veolia account id unavailable; will retry "
                 "on next restart",
-                entry.title,
+                entry.entry_id,
             )
             return False
         account_id = str(api.account_data.id_abonnement)
@@ -107,7 +133,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> 
         hass.config_entries.async_update_entry(entry, unique_id=account_id, version=2)
         LOGGER.info(
             "Migration of %s to version 2 done (account id %s)",
-            entry.title,
+            entry.entry_id,
             account_id,
         )
 

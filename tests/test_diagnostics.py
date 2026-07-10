@@ -56,12 +56,6 @@ async def test_diagnostics_redacts_sensitive_fields(
     # Non-sensitive fields remain in clear.
     assert account_data["marque"] == "ITRON"
 
-    # Statistics series are summarized as counts, not dumped in full.
-    computed = diagnostics["computed"]
-    assert computed["daily_stats_liters"].endswith("rows")
-    assert computed["monthly_stats_cubic_meters"].endswith("rows")
-    assert computed["index_stats_m3"].endswith("rows")
-
     assert diagnostics["last_update_success"] is True
 
 

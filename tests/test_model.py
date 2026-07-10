@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import date
 
 import pytest
 
@@ -166,16 +166,52 @@ def test_compute_daily_stats_cumulative() -> None:
     ]
     stats = _compute_daily_stats(daily)
     assert len(stats) == 2
-    assert stats[0] == {
-        "start": datetime(2026, 7, 1, tzinfo=UTC),
-        "state": 100,
-        "sum": 100,
-    }
-    assert stats[1] == {
-        "start": datetime(2026, 7, 2, tzinfo=UTC),
-        "state": 50,
-        "sum": 150,
-    }
+    assert stats[0] == {"date": date(2026, 7, 1), "state": 100, "sum": 100}
+    assert stats[1] == {"date": date(2026, 7, 2), "state": 50, "sum": 150}
+
+
+def test_compute_daily_stats_sorts_out_of_order_records() -> None:
+    """Records are sorted by date regardless of input order."""
+    daily = [
+        {"date_releve": "2026-07-02", "consommation": {"litre": 50}},
+        {"date_releve": "2026-07-01", "consommation": {"litre": 100}},
+    ]
+    stats = _compute_daily_stats(daily)
+    assert [row["date"] for row in stats] == [date(2026, 7, 1), date(2026, 7, 2)]
+    assert stats[0]["sum"] == 100
+    assert stats[1]["sum"] == 150
+
+
+def test_compute_daily_stats_deduplicates_last_record_wins() -> None:
+    """A duplicated date keeps only the last record for that date."""
+    daily = [
+        {"date_releve": "2026-07-01", "consommation": {"litre": 100}},
+        {"date_releve": "2026-07-01", "consommation": {"litre": 999}},
+    ]
+    stats = _compute_daily_stats(daily)
+    assert len(stats) == 1
+    assert stats[0]["state"] == 999
+    assert stats[0]["sum"] == 999
+
+
+def test_compute_daily_stats_after_filters_dates_on_or_before_anchor() -> None:
+    """Records dated on or before `after` are skipped."""
+    daily = [
+        {"date_releve": "2026-07-01", "consommation": {"litre": 100}},
+        {"date_releve": "2026-07-02", "consommation": {"litre": 50}},
+    ]
+    stats = _compute_daily_stats(daily, after=date(2026, 7, 1))
+    assert len(stats) == 1
+    assert stats[0]["date"] == date(2026, 7, 2)
+    assert stats[0]["state"] == 50
+    assert stats[0]["sum"] == 50
+
+
+def test_compute_daily_stats_initial_sum_anchors_running_total() -> None:
+    """`initial_sum` seeds the cumulative sum from a previous statistic."""
+    daily = [{"date_releve": "2026-07-01", "consommation": {"litre": 100}}]
+    stats = _compute_daily_stats(daily, initial_sum=500.0)
+    assert stats[0]["sum"] == 600.0
 
 
 def test_compute_daily_stats_skips_invalid_dates() -> None:
@@ -215,16 +251,51 @@ def test_compute_monthly_stats_cumulative() -> None:
     ]
     stats = _compute_monthly_stats(monthly)
     assert len(stats) == 2
-    assert stats[0] == {
-        "start": datetime(2026, 1, 1, tzinfo=UTC),
-        "state": 1.0,
-        "sum": 1.0,
-    }
-    assert stats[1] == {
-        "start": datetime(2026, 2, 1, tzinfo=UTC),
-        "state": 2.0,
-        "sum": 3.0,
-    }
+    assert stats[0] == {"date": date(2026, 1, 1), "state": 1.0, "sum": 1.0}
+    assert stats[1] == {"date": date(2026, 2, 1), "state": 2.0, "sum": 3.0}
+
+
+def test_compute_monthly_stats_sorts_out_of_order_records() -> None:
+    """Records are sorted by (year, month) regardless of input order."""
+    monthly = [
+        {"annee": 2026, "mois": 2, "consommation": {"m3": 2.0}},
+        {"annee": 2026, "mois": 1, "consommation": {"m3": 1.0}},
+    ]
+    stats = _compute_monthly_stats(monthly)
+    assert [row["date"] for row in stats] == [date(2026, 1, 1), date(2026, 2, 1)]
+    assert stats[0]["sum"] == 1.0
+    assert stats[1]["sum"] == 3.0
+
+
+def test_compute_monthly_stats_deduplicates_last_record_wins() -> None:
+    """A duplicated (year, month) keeps only the last record."""
+    monthly = [
+        {"annee": 2026, "mois": 1, "consommation": {"m3": 1.0}},
+        {"annee": 2026, "mois": 1, "consommation": {"m3": 9.0}},
+    ]
+    stats = _compute_monthly_stats(monthly)
+    assert len(stats) == 1
+    assert stats[0]["state"] == 9.0
+    assert stats[0]["sum"] == 9.0
+
+
+def test_compute_monthly_stats_after_filters_months_on_or_before_anchor() -> None:
+    """Months dated on or before `after` are skipped."""
+    monthly = [
+        {"annee": 2026, "mois": 1, "consommation": {"m3": 1.0}},
+        {"annee": 2026, "mois": 2, "consommation": {"m3": 2.0}},
+    ]
+    stats = _compute_monthly_stats(monthly, after=date(2026, 1, 1))
+    assert len(stats) == 1
+    assert stats[0]["date"] == date(2026, 2, 1)
+    assert stats[0]["sum"] == 2.0
+
+
+def test_compute_monthly_stats_initial_sum_anchors_running_total() -> None:
+    """`initial_sum` seeds the cumulative sum from a previous statistic."""
+    monthly = [{"annee": 2026, "mois": 1, "consommation": {"m3": 1.0}}]
+    stats = _compute_monthly_stats(monthly, initial_sum=10.0)
+    assert stats[0]["sum"] == 11.0
 
 
 def test_compute_monthly_stats_skips_missing_year_or_month() -> None:
@@ -258,10 +329,9 @@ def test_compute_index_stats_forward_fills_gap_between_readings() -> None:
         {"date_releve": "2026-07-01", "index": {"m3": 100.0}},
         {"date_releve": "2026-07-04", "index": {"m3": 103.0}},
     ]
-    today = date(2026, 7, 4)
-    stats = _compute_index_stats(daily, today)
+    stats = _compute_index_stats(daily)
     # 07-01 (real), 07-02 (filled), 07-03 (filled), 07-04 (real) = 4 rows.
-    assert [row["start"].date() for row in stats] == [
+    assert [row["date"] for row in stats] == [
         date(2026, 7, 1),
         date(2026, 7, 2),
         date(2026, 7, 3),
@@ -272,17 +342,15 @@ def test_compute_index_stats_forward_fills_gap_between_readings() -> None:
     assert stats[3]["state"] == 103.0
 
 
-def test_compute_index_stats_forward_fills_to_today() -> None:
-    """After the last reading, the state is forward-filled up to today inclusive."""
+def test_compute_index_stats_no_trailing_fill_past_last_reading() -> None:
+    """No forward-fill rows are added past the last real reading.
+
+    Filling up to "today" would be invalidated by the next refresh once
+    the series is anchored, so a single reading yields a single row.
+    """
     daily = [{"date_releve": "2026-07-01", "index": {"m3": 100.0}}]
-    today = date(2026, 7, 3)
-    stats = _compute_index_stats(daily, today)
-    assert [row["start"].date() for row in stats] == [
-        date(2026, 7, 1),
-        date(2026, 7, 2),
-        date(2026, 7, 3),
-    ]
-    assert all(row["state"] == 100.0 for row in stats)
+    stats = _compute_index_stats(daily)
+    assert stats == [{"date": date(2026, 7, 1), "state": 100.0, "sum": 100.0}]
 
 
 def test_compute_index_stats_skips_invalid_date() -> None:
@@ -291,8 +359,7 @@ def test_compute_index_stats_skips_invalid_date() -> None:
         {"date_releve": "invalid-date", "index": {"m3": 999.0}},
         {"date_releve": "2026-07-02", "index": {"m3": 101.0}},
     ]
-    today = date(2026, 7, 2)
-    stats = _compute_index_stats(daily, today)
+    stats = _compute_index_stats(daily)
     assert len(stats) == 1
     assert stats[0]["state"] == 101.0
 
@@ -303,22 +370,50 @@ def test_compute_index_stats_skips_missing_index() -> None:
         {"date_releve": "2026-07-01", "index": {}},
         {"date_releve": "2026-07-02", "index": {"m3": 101.0}},
     ]
-    today = date(2026, 7, 2)
-    stats = _compute_index_stats(daily, today)
+    stats = _compute_index_stats(daily)
     assert len(stats) == 1
     assert stats[0]["state"] == 101.0
 
 
 def test_compute_index_stats_empty_daily_list() -> None:
-    """No records yields no rows, even if today is far in the future."""
-    assert _compute_index_stats([], date(2026, 7, 10)) == []
+    """No records yields no rows."""
+    assert _compute_index_stats([]) == []
 
 
-def test_compute_index_stats_no_fill_needed_when_today_is_last_reading() -> None:
-    """No forward-fill rows are added when today matches the last reading."""
-    daily = [{"date_releve": "2026-07-01", "index": {"m3": 100.0}}]
-    stats = _compute_index_stats(daily, date(2026, 7, 1))
-    assert len(stats) == 1
+def test_compute_index_stats_sorts_and_deduplicates_records() -> None:
+    """Records are sorted by date first, and duplicated dates keep the last."""
+    daily = [
+        {"date_releve": "2026-07-02", "index": {"m3": 101.0}},
+        {"date_releve": "2026-07-01", "index": {"m3": 100.0}},
+        {"date_releve": "2026-07-01", "index": {"m3": 100.5}},
+    ]
+    stats = _compute_index_stats(daily)
+    assert [row["date"] for row in stats] == [date(2026, 7, 1), date(2026, 7, 2)]
+    assert stats[0]["state"] == 100.5
+
+
+def test_compute_index_stats_after_filters_output_but_seeds_fill() -> None:
+    """Rows on or before `after` are omitted, but still seed the fill state.
+
+    A reading before the anchor and a real reading after it, with a gap
+    between them, still forward-fills the days right after the anchor
+    using the pre-anchor reading's state.
+    """
+    daily = [
+        {"date_releve": "2026-07-01", "index": {"m3": 100.0}},
+        {"date_releve": "2026-07-05", "index": {"m3": 104.0}},
+    ]
+    stats = _compute_index_stats(daily, after=date(2026, 7, 2))
+    # 07-01 is <= after (dropped); 07-02 fill dropped (<= after); 07-03 and
+    # 07-04 are filled from the 07-01 reading; 07-05 is the real reading.
+    assert [row["date"] for row in stats] == [
+        date(2026, 7, 3),
+        date(2026, 7, 4),
+        date(2026, 7, 5),
+    ]
+    assert stats[0]["state"] == 100.0
+    assert stats[1]["state"] == 100.0
+    assert stats[2]["state"] == 104.0
 
 
 # --------------------------------------------------------------------------
@@ -460,11 +555,6 @@ def test_from_account_data_full() -> None:
     assert computed.last_date == date(2026, 7, 8)
     assert computed.daily_fiability == "MESURE"
     assert computed.monthly_fiability == "MESURE"
-    assert len(computed.daily_stats_liters) == 3
-    assert len(computed.monthly_stats_cubic_meters) == 3
-    # Index stats forward-fill the 07-02 gap (07-01->07-03) and the
-    # 07-04..07-07 gap (07-03->07-08): 3 real readings + 5 filled days.
-    assert len(computed.index_stats_m3) == 8
     assert computed.daily_today_liters == 120
     assert computed.daily_today_m3 == pytest.approx(0.12)
     assert computed.daily_today_fiability == "MESURE"
@@ -494,9 +584,6 @@ def test_from_account_data_empty_consumption_lists() -> None:
     assert computed.monthly_latest_m3 is None
     assert computed.annual_total_m3 == 0.0
     assert computed.last_date is None
-    assert computed.daily_stats_liters == []
-    assert computed.monthly_stats_cubic_meters == []
-    assert computed.index_stats_m3 == []
     assert computed.daily_today_liters is None
 
 
@@ -505,7 +592,6 @@ def test_from_account_data_none_consumption_lists() -> None:
     raw = build_account_data(daily_consumption=None, monthly_consumption=None)
     model = VeoliaModel.from_account_data(raw, today=date(2026, 7, 8))
     assert model.computed.last_index_m3 is None
-    assert model.computed.daily_stats_liters == []
 
 
 def test_veolia_model_proxies_unknown_attributes_to_raw() -> None:

@@ -30,8 +30,6 @@ TO_REDACT = {
     "billing_plan",
 }
 
-_STATS_FIELDS = ("daily_stats_liters", "monthly_stats_cubic_meters", "index_stats_m3")
-
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: VeoliaConfigEntry
@@ -40,9 +38,6 @@ async def async_get_config_entry_diagnostics(
     coordinator = entry.runtime_data
     account = asdict(coordinator.client_api.account_data)
     computed = asdict(coordinator.data.computed)
-    # Statistics series are large; report their sizes only.
-    for field in _STATS_FIELDS:
-        computed[field] = f"{len(computed[field])} rows"
     return {
         "entry": {
             "data": async_redact_data(dict(entry.data), TO_REDACT),

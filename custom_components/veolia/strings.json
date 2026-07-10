@@ -14,7 +14,7 @@
       },
       "select_commune": {
         "title": "Select your commune",
-        "description": "",
+        "description": "Select your commune.\n\n{unsupported_portal}",
         "data": {
           "commune": "Please select your commune from the list below :"
         },
@@ -91,6 +91,19 @@
     },
     "alert_settings_unavailable": {
       "message": "Alert settings are not available yet; try again after the next update."
+    },
+    "unknown_portal": {
+      "message": "The configured portal {portal} is not supported by the installed client package."
+    }
+  },
+  "issues": {
+    "unknown_portal": {
+      "title": "Unsupported water portal",
+      "description": "The portal “{portal}” configured for this entry is not supported by the installed veolia-api-foxace package anymore. Update the integration or reconfigure the entry."
+    },
+    "api_down": {
+      "title": "Veolia data unavailable",
+      "description": "Fetching data has failed repeatedly for about two days. The Veolia portal may be down; data will resume automatically once it recovers."
     }
   },
   "entity": {

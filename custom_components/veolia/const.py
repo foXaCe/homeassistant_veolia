@@ -23,6 +23,11 @@ COMMUNE_TYPE_NOT_SERVED: Final = "NON_DESSERVIE"
 # Options
 DEFAULT_SCAN_INTERVAL_HOURS: Final = 6
 
+# Number of consecutive failed refreshes before a repair issue is raised for
+# a persistently unreachable Veolia portal (8 x 6h default scan interval ~=
+# 2 days of continuous outage).
+CONSECUTIVE_FAILURES_FOR_ISSUE: Final = 8
+
 # Commune lookup endpoint used by the config flow to check eligibility.
 COMMUNES_LOOKUP_URL: Final = (
     "https://prd-ael-sirius-refcommunes.istefr.fr/communes-nationales"

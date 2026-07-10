@@ -14,12 +14,14 @@ veolia_api (paquet PyPI veolia-api-foxace : Cognito, portails, consommation, ale
 VeoliaDataUpdateCoordinator (coordinator.py, intervalle configurable, défaut 6 h)
         │  entry.runtime_data (VeoliaConfigEntry = ConfigEntry[VeoliaDataUpdateCoordinator])
         │  coordinator.data = VeoliaModel (raw + computed)
+        │
+        ├─ statistics.py → recorder : statistiques externes `veolia:{account_id}_*`
+        │  (dashboard Énergie : index, conso jour/mois), sommes ancrées sur la
+        │  dernière statistique en base (get_last_statistics)
         ▼
 VeoliaBaseEntity (entity.py, CoordinatorEntity commune, DeviceInfo)
         ▼
 Entités : sensor (9) / binary_sensor (3) / switch (3) / text (2)
-        │
-        └─ statistics.py → recorder (dashboard Énergie : index, conso jour/mois)
 ```
 
 ## Modules
@@ -28,13 +30,13 @@ Entités : sensor (9) / binary_sensor (3) / switch (3) / text (2)
 | ------------------ | ------------------------------------------------------------------------ |
 | `__init__.py`      | `async_setup_entry`/`async_unload_entry` + `async_migrate_entry` (v1→v2 : unique_id `{entry_id}_…` → `{account_id}_…`) |
 | `config_flow.py`   | Flow UI (code postal → commune → identifiants) + reauth + reconfigure + options (`scan_interval`, `OptionsFlowWithReload`) |
-| `coordinator.py`   | `VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel])` ; fetch initial 1 an puis fenêtre glissante 2 mois ; écritures centralisées `async_set_alert_settings()` |
+| `coordinator.py`   | `VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel])` ; fenêtre de fetch dérivée de l'ancre recorder (aucune statistique → 1 an, sinon depuis le mois de la dernière statistique) ; import des statistiques externes à chaque refresh ; écritures centralisées `async_set_alert_settings()` |
 | `data.py`          | `type VeoliaConfigEntry = ConfigEntry[VeoliaDataUpdateCoordinator]` — typage du `runtime_data` |
-| `model.py`         | Fonctions **pures** (aucun import HA) : calculs index/conso/statistiques/facturation, `VeoliaModel`/`VeoliaComputed`, `StatisticsRow` |
+| `model.py`         | Fonctions **pures** (aucun import HA) : calculs index/conso/facturation, builders de statistiques datés calendaire (tri + dédup + ancrage `initial_sum`/`after`), `VeoliaModel`/`VeoliaComputed`, `StatisticsRow` |
 | `entity.py`        | `VeoliaBaseEntity` : base `CoordinatorEntity` commune à toutes les plateformes (unique_id `{account_id}_{key}`, `DeviceInfo` complet) |
-| `statistics.py`    | Import des statistiques cumulées dans le recorder (réimporté à chaque refresh) |
+| `statistics.py`    | Statistiques **externes** du recorder (`veolia:{account_id}_{série}`, source = domaine) : lecture de l'ancre (`get_last_stat`) et import (`async_add_external_statistics`), horodatage à minuit local |
 | `helpers.py`       | Fonctions pures partagées (`is_unoccupied_mode`)                          |
-| `sensor.py`        | 9 capteurs via `VeoliaSensorEntityDescription` (`value_fn`/`attributes_fn`/`statistics_fn`) |
+| `sensor.py`        | 9 capteurs via `VeoliaSensorEntityDescription` (`value_fn`/`attributes_fn`) — aucun rôle dans les statistiques |
 | `binary_sensor.py` | 3 états d'alertes via descriptions (`is_on_fn`/`available_fn`), catégorie diagnostic |
 | `switch.py`        | 3 interrupteurs d'alertes via descriptions (`turn_on/off_settings`), catégorie configuration |
 | `text.py`          | 2 seuils d'alerte via descriptions (0 = désactivation), catégorie configuration |
@@ -65,10 +67,14 @@ Entités : sensor (9) / binary_sensor (3) / switch (3) / text (2)
 - **unique_id** : format `{account_id}_{key}` (id d'abonnement Veolia). La migration
   v1→v2 (`async_migrate_entry`) remappe automatiquement l'ancien format
   `{entry_id}_{key}` — ne JAMAIS changer un `key` de description sans nouvelle migration.
-- **Dépendance `recorder`** : l'intégration injecte l'historique de consommation dans
-  les statistiques Home Assistant (dashboard Énergie) — les données Veolia arrivent
-  avec au minimum 24 h de retard. Les statistiques sont réimportées à chaque refresh
-  du coordinator.
+- **Dépendance `recorder`** : le coordinator importe l'historique de consommation en
+  **statistiques externes** (`veolia:{account_id}_daily_consumption` /
+  `_monthly_consumption` / `_index`, dashboard Énergie) — les données Veolia arrivent
+  avec au minimum 24 h de retard. À chaque refresh, les sommes cumulées sont ancrées
+  sur la dernière statistique en base (`get_last_statistics`) et seul le nouveau est
+  importé, à l'exception de la dernière ligne déjà importée : elle est ré-importée
+  avec sa valeur API courante (« rewind d'une ligne »), pour que le mois en cours et
+  le dernier jour provisoire convergent vers leur valeur définitive.
 - **Client API** : la logique d'authentification/portails vit dans le paquet PyPI
   [`veolia-api-foxace`](https://pypi.org/project/veolia-api-foxace/) (module `veolia_api`),
   publié depuis le fork [foXaCe/veolia-api](https://github.com/foXaCe/veolia-api) et

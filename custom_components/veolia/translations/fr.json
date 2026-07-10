@@ -14,7 +14,7 @@
       },
       "select_commune": {
         "title": "Sélection de la commune",
-        "description": "",
+        "description": "Sélectionnez votre commune.\n\n{unsupported_portal}",
         "data": {
           "commune": "Veuillez sélectionner votre commune dans la liste ci-dessous :"
         },
@@ -91,6 +91,19 @@
     },
     "alert_settings_unavailable": {
       "message": "Les réglages d'alerte ne sont pas encore disponibles ; veuillez réessayer après la prochaine mise à jour."
+    },
+    "unknown_portal": {
+      "message": "Le portail configuré {portal} n'est pas pris en charge par le paquet client installé."
+    }
+  },
+  "issues": {
+    "unknown_portal": {
+      "title": "Portail eau non pris en charge",
+      "description": "Le portail « {portal} » configuré pour cette entrée n'est plus pris en charge par le paquet veolia-api-foxace installé. Veuillez mettre à jour l'intégration ou reconfigurer l'entrée."
+    },
+    "api_down": {
+      "title": "Données Veolia indisponibles",
+      "description": "La récupération des données échoue de manière répétée depuis environ deux jours. Le portail Veolia est peut-être en panne ; les données reprendront automatiquement dès son rétablissement."
     }
   },
   "entity": {

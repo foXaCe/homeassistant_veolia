@@ -34,7 +34,7 @@ _Intégration Home Assistant pour Veolia Eau (compatible avec https://www.eau.ve
 - État des alertes de consommation d'eau
 - Date de la dernière relève de consommation d'eau
 
-> #### **Note :** Les données de l'intégration sont mises à jour toutes les 12h.
+> #### **Note :** Les données de l'intégration sont mises à jour toutes les 6h par défaut (intervalle configurable de 1 à 24h dans les options de l'intégration).
 
 ### Capteurs
 
@@ -71,6 +71,10 @@ Informations supplémentaires :
 L'intégration Veolia permet de visualiser les données de consommation d'eau en natif dans Home Assistant. Elle re-télécharge l'historique du mois en cours depuis Veolia et met à jour la base de données Home Assistant.
 
 > Pour visualiser les informations à la bonne date, il est nécessaire d'utiliser le sensor de consommation journalière (l'utilisation du sensor index compteur générera un décalage dans les dates).
+
+> [!IMPORTANT]
+>
+> **Migration statistiques (changement cassant)** : les statistiques long-terme sont désormais publiées sous les identifiants `veolia:..._daily_consumption`, `veolia:..._monthly_consumption` et `veolia:..._index` (au lieu des statistiques des entités `sensor.veolia_*`). Re-sélectionnez la source d'eau dans `Paramètres` → `Tableaux de bord` → `Énergie`, et purgez les anciennes séries via `Outils de développement` → `Statistiques` (« Corriger le problème » sur les entités listées).
 
 #### 1. Ajout au dashboard énergie de Home Assistant
 
@@ -165,7 +169,7 @@ Votre portail n'est pas géré ? Voir [CONTRIBUTING.md](CONTRIBUTING.md#ajouter-
 
 ## API Veolia
 
-Cette intégration utilise le client API Python [veolia-api](https://github.com/Jezza34000/veolia-api).
+Cette intégration utilise le client API Python [veolia-api-foxace](https://github.com/foXaCe/veolia-api) (fork de [veolia-api](https://github.com/Jezza34000/veolia-api)).
 
 ## Contribuer
 

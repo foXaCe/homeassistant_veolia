@@ -107,8 +107,12 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
             params={"q": postal_code},
             timeout=aiohttp.ClientTimeout(total=30),
         ) as response:
-            communes: list[dict[str, Any]] = await response.json()
-        LOGGER.debug("Communes found for %s: %s", postal_code, communes)
+            payload = await response.json()
+        if not isinstance(payload, list):
+            LOGGER.debug("Unexpected communes payload type: %s", type(payload).__name__)
+            return []
+        communes = [item for item in payload if isinstance(item, dict)]
+        LOGGER.debug("Found %d commune(s) for the given postal code", len(communes))
         return communes
 
     async def _async_validate(
@@ -163,6 +167,7 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Handle the selection of a commune."""
         errors: dict[str, str] = {}
+        unsupported_hint = ""
         if user_input is not None:
             selected = next(
                 (
@@ -184,6 +189,7 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
                 if hostname in VEOLIA_PORTAL_CLIENTS:
                     self._portal_url = hostname
                     return await self.async_step_credentials()
+                unsupported_hint = hostname
                 errors["base"] = "commune_not_supported"
             elif commune_type == COMMUNE_TYPE_NOT_SERVED:
                 errors["base"] = "commune_not_veolia"
@@ -205,6 +211,7 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+            description_placeholders={"unsupported_portal": unsupported_hint},
         )
 
     async def async_step_credentials(
@@ -279,12 +286,14 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         reauth_entry = self._get_reauth_entry()
         if user_input is not None:
-            _, error = await self._async_validate(
+            account_id, error = await self._async_validate(
                 reauth_entry.data[CONF_USERNAME],
                 user_input[CONF_PASSWORD],
                 reauth_entry.data.get(CONF_PORTAL_URL),
             )
             if error is None:
+                await self.async_set_unique_id(account_id)
+                self._abort_if_unique_id_mismatch()
                 return self.async_update_reload_and_abort(
                     reauth_entry,
                     data_updates={CONF_PASSWORD: user_input[CONF_PASSWORD]},

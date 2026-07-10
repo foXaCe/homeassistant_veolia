@@ -3,6 +3,4 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-ruff check .
-ruff format --check .
 prek run --all-files
