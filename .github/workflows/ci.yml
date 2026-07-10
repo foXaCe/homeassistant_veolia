@@ -38,3 +38,43 @@ jobs:
 
       - name: Run prek (ruff, codespell, gitleaks, renovate-config)
         run: prek run --all-files --show-diff-on-failure --color=always
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install test dependencies
+        run: pip install -r requirements_test.txt
+
+      - name: Run pytest with coverage
+        run: >-
+          pytest tests/ -q
+          --cov=custom_components/veolia
+          --cov-report=term-missing
+          --cov-fail-under=90
+
+  typing:
+    name: Typing (mypy --strict)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements_dev.txt
+
+      - name: Run mypy
+        run: mypy custom_components/veolia/
