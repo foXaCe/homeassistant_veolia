@@ -83,16 +83,19 @@ async def test_all_sensors_values_and_attributes(
     billing_index = hass.states.get(_entity_id(entity_registry, "billing_index"))
     assert billing_index.state == "337.0"
     assert billing_index.attributes["reading_date"] == "2026-07-08"
-    assert billing_index.attributes["meter_number"] == "U24BA285500"
     assert billing_index.attributes["reading_mode"] == "TELERELEVE"
     assert billing_index.attributes["payment_mode"] == "PRELEVEMENT"
     assert billing_index.attributes["contract"] == "Contrat eau"
-    assert billing_index.attributes["branch_address"] == "1 rue de Test"
     assert billing_index.attributes["meter_location"] == "Cave"
     assert billing_index.attributes["status"] == "ACTIF"
-    assert billing_index.attributes["customer_number"] == "CLIENT-1"
-    assert billing_index.attributes["holder"] == "M. Test"
     assert billing_index.attributes["brand"] == "ITRON"
+    for pii_attribute in (
+        "meter_number",
+        "branch_address",
+        "customer_number",
+        "holder",
+    ):
+        assert pii_attribute not in billing_index.attributes
 
 
 async def test_sensor_unique_id_pattern(
