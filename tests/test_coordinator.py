@@ -13,6 +13,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from veolia_api.exceptions import VeoliaAPIError, VeoliaAPIInvalidCredentialsError
 
 from custom_components.veolia.const import (
+    CONF_COST_PER_M3,
     CONSECUTIVE_FAILURES_FOR_ISSUE,
     DEFAULT_SCAN_INTERVAL_HOURS,
     DOMAIN,
@@ -22,7 +23,7 @@ from custom_components.veolia.coordinator import (
     _anchored_series_params,
 )
 from custom_components.veolia.model import VeoliaModel
-from custom_components.veolia.statistics import LastStat
+from custom_components.veolia.statistics import LastStat, build_statistic_id
 from homeassistant.components.recorder import Recorder
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
@@ -30,7 +31,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from .const import MOCK_ACCOUNT_ID
+from .const import MOCK_ACCOUNT_ID, MOCK_CONFIG_ENTRY_DATA
 
 
 @pytest.fixture
@@ -173,6 +174,106 @@ async def test_coordinator_anchored_window_handles_year_rollover(
     mock_veolia_api.fetch_all_data.assert_called_once_with(
         date(2025, 12, 1), date(2026, 1, 1)
     )
+
+
+async def test_coordinator_cost_anchor_missing_triggers_full_backfill(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """A daily anchor with no cost anchor still triggers a full year backfill.
+
+    Simulates the cost series being added after an integration update: the
+    daily-consumption series already has history, but the cost series has
+    never been imported yet.
+    """
+    freezer.move_to("2026-07-10")
+    daily_statistic_id = build_statistic_id(MOCK_ACCOUNT_ID, "daily_consumption")
+    daily_anchor = LastStat(sum=4200.0, state=120.0, date=date(2026, 6, 5))
+
+    async def _side_effect(_hass: HomeAssistant, statistic_id: str) -> LastStat | None:
+        return daily_anchor if statistic_id == daily_statistic_id else None
+
+    mock_config_entry.add_to_hass(hass)
+    coordinator = VeoliaDataUpdateCoordinator(hass, mock_config_entry)
+
+    with (
+        patch(
+            "custom_components.veolia.coordinator.get_last_stat",
+            new_callable=AsyncMock,
+            side_effect=_side_effect,
+        ),
+        patch("custom_components.veolia.coordinator.import_volume_statistics"),
+    ):
+        await coordinator.async_refresh()
+
+    mock_veolia_api.fetch_all_data.assert_called_once_with(
+        date(2025, 7, 1), date(2026, 7, 1)
+    )
+
+
+async def test_coordinator_imports_cost_statistics(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """A successful refresh imports the cost series alongside the other three."""
+    mock_config_entry.add_to_hass(hass)
+    coordinator = VeoliaDataUpdateCoordinator(hass, mock_config_entry)
+
+    with (
+        patch(
+            "custom_components.veolia.coordinator.get_last_stat",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
+            "custom_components.veolia.coordinator.import_volume_statistics"
+        ) as mock_import,
+    ):
+        await coordinator.async_refresh()
+
+    assert mock_import.call_count == 4
+    cost_statistic_id = build_statistic_id(MOCK_ACCOUNT_ID, "cost")
+    call = next(c for c in mock_import.call_args_list if c.args[1] == cost_statistic_id)
+    assert call.args[2] == f"Veolia coût eau {MOCK_ACCOUNT_ID}"
+    assert call.args[4] == "EUR"
+    assert call.kwargs["unit_class"] is None
+
+
+async def test_coordinator_cost_price_from_options(
+    hass: HomeAssistant,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """The cost series uses the price per m3 configured in the entry options."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=2,
+        unique_id=MOCK_ACCOUNT_ID,
+        data=dict(MOCK_CONFIG_ENTRY_DATA),
+        options={CONF_COST_PER_M3: 5.0},
+    )
+    entry.add_to_hass(hass)
+    coordinator = VeoliaDataUpdateCoordinator(hass, entry)
+
+    with (
+        patch(
+            "custom_components.veolia.coordinator.get_last_stat",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
+            "custom_components.veolia.coordinator.import_volume_statistics"
+        ) as mock_import,
+    ):
+        await coordinator.async_refresh()
+
+    cost_statistic_id = build_statistic_id(MOCK_ACCOUNT_ID, "cost")
+    call = next(c for c in mock_import.call_args_list if c.args[1] == cost_statistic_id)
+    stats = call.args[3]
+    # Fixture daily data: first row is 2026-07-01 with 100 L.
+    assert stats[0]["state"] == pytest.approx(100 / 1000 * 5.0)
 
 
 async def test_coordinator_auth_failed_triggers_reauth(

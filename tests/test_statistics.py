@@ -12,7 +12,10 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.veolia.const import DOMAIN
-from custom_components.veolia.statistics import build_statistic_id
+from custom_components.veolia.statistics import (
+    build_statistic_id,
+    import_volume_statistics,
+)
 from homeassistant.components.recorder import Recorder
 from homeassistant.components.recorder.models import StatisticMeanType
 from homeassistant.const import UnitOfVolume
@@ -24,6 +27,7 @@ from .const import MOCK_ACCOUNT_ID
 
 DAILY_STATISTIC_ID = build_statistic_id(MOCK_ACCOUNT_ID, "daily_consumption")
 MONTHLY_STATISTIC_ID = build_statistic_id(MOCK_ACCOUNT_ID, "monthly_consumption")
+COST_STATISTIC_ID = build_statistic_id(MOCK_ACCOUNT_ID, "cost")
 
 
 def _no_anchor(
@@ -53,6 +57,39 @@ def _anchor_at(
         }
 
     return _side_effect
+
+
+def test_import_volume_statistics_defaults_to_volume_unit_class() -> None:
+    """Without an explicit `unit_class`, a volume series keeps its VolumeConverter class.
+
+    ``unit_class`` is optional and defaults to ``VolumeConverter.UNIT_CLASS`` so
+    the existing daily/monthly/index call sites keep working unchanged; only
+    the cost series passes ``unit_class=None`` explicitly.
+    """
+    hass = MagicMock()
+    stats = [{"date": date(2026, 7, 1), "state": 100, "sum": 100}]
+    with patch(
+        "custom_components.veolia.statistics.async_add_external_statistics"
+    ) as mock_import:
+        import_volume_statistics(
+            hass, DAILY_STATISTIC_ID, "name", stats, UnitOfVolume.LITERS
+        )
+
+    metadata = mock_import.call_args.args[1]
+    assert metadata["unit_class"] == VolumeConverter.UNIT_CLASS
+
+
+def test_import_volume_statistics_noop_for_empty_cost_stats() -> None:
+    """The no-op-on-empty-stats behavior also holds for `unit_class=None` calls."""
+    hass = MagicMock()
+    with patch(
+        "custom_components.veolia.statistics.async_add_external_statistics"
+    ) as mock_import:
+        import_volume_statistics(
+            hass, COST_STATISTIC_ID, "name", [], "EUR", unit_class=None
+        )
+
+    mock_import.assert_not_called()
 
 
 async def test_import_volume_statistics_full_metadata(
@@ -92,6 +129,46 @@ async def test_import_volume_statistics_full_metadata(
         "statistic_id": DAILY_STATISTIC_ID,
         "unit_class": VolumeConverter.UNIT_CLASS,
         "unit_of_measurement": UnitOfVolume.LITERS,
+    }
+
+
+async def test_import_cost_statistics_metadata_eur_no_unit_class(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """The cost import call carries EUR metadata with no volume unit class."""
+    freezer.move_to("2026-07-08 12:00:00")
+    mock_config_entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.veolia.statistics.get_last_statistics",
+            side_effect=_no_anchor,
+        ),
+        patch(
+            "custom_components.veolia.statistics.async_add_external_statistics"
+        ) as mock_import,
+    ):
+        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    call = next(
+        c
+        for c in mock_import.call_args_list
+        if c.args[1]["statistic_id"] == COST_STATISTIC_ID
+    )
+    metadata = call.args[1]
+    assert metadata == {
+        "mean_type": StatisticMeanType.NONE,
+        "has_sum": True,
+        "name": f"Veolia coût eau {MOCK_ACCOUNT_ID}",
+        "source": DOMAIN,
+        "statistic_id": COST_STATISTIC_ID,
+        "unit_class": None,
+        "unit_of_measurement": "EUR",
     }
 
 

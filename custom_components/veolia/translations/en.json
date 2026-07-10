@@ -77,10 +77,12 @@
       "init": {
         "title": "Veolia options",
         "data": {
-          "scan_interval": "Update interval (hours)"
+          "scan_interval": "Update interval (hours)",
+          "cost_per_m3": "Water price (€/m³)"
         },
         "data_description": {
-          "scan_interval": "How often the integration fetches data from the Veolia portal."
+          "scan_interval": "How often the integration fetches data from the Veolia portal.",
+          "cost_per_m3": "Price per cubic meter (all taxes included) used to build the cumulative cost statistic. Changing it only affects newly imported days."
         }
       }
     }

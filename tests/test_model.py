@@ -10,6 +10,7 @@ from custom_components.veolia.model import (
     VeoliaModel,
     _compute_annual_total,
     _compute_billing,
+    _compute_cost_stats,
     _compute_daily_stats,
     _compute_index_stats,
     _compute_monthly_stats,
@@ -273,6 +274,64 @@ def test_compute_daily_stats_missing_consumption_defaults_zero() -> None:
 def test_compute_daily_stats_empty_list() -> None:
     """An empty list of records yields no rows."""
     assert _compute_daily_stats([]) == []
+
+
+# --------------------------------------------------------------------------
+# _compute_cost_stats
+# --------------------------------------------------------------------------
+
+
+def test_compute_cost_stats_cumulative() -> None:
+    """Daily cost (EUR) accumulates into a running sum at the configured price."""
+    daily = [
+        {"date_releve": "2026-07-01", "consommation": {"litre": 100}},
+        {"date_releve": "2026-07-03", "consommation": {"litre": 110}},
+        {"date_releve": "2026-07-08", "consommation": {"litre": 120}},
+    ]
+    stats = _compute_cost_stats(daily, price_per_m3=3.81)
+    assert [row["state"] for row in stats] == pytest.approx([0.381, 0.4191, 0.4572])
+    assert [row["sum"] for row in stats] == pytest.approx([0.381, 0.8001, 1.2573])
+
+
+def test_compute_cost_stats_price_scales_linearly() -> None:
+    """Each day's cost scales linearly with the configured price per m3."""
+    daily = [
+        {"date_releve": "2026-07-01", "consommation": {"litre": 100}},
+        {"date_releve": "2026-07-03", "consommation": {"litre": 110}},
+        {"date_releve": "2026-07-08", "consommation": {"litre": 120}},
+    ]
+    stats = _compute_cost_stats(daily, price_per_m3=2.0)
+    assert [row["state"] for row in stats] == pytest.approx(
+        [100 / 1000 * 2.0, 110 / 1000 * 2.0, 120 / 1000 * 2.0]
+    )
+
+
+def test_compute_cost_stats_after_filters_and_anchors() -> None:
+    """`after` skips earlier rows and `initial_sum` anchors the running total."""
+    daily = [
+        {"date_releve": "2026-07-01", "consommation": {"litre": 100}},
+        {"date_releve": "2026-07-03", "consommation": {"litre": 110}},
+        {"date_releve": "2026-07-08", "consommation": {"litre": 120}},
+    ]
+    stats = _compute_cost_stats(
+        daily, price_per_m3=3.81, initial_sum=10.0, after=date(2026, 7, 1)
+    )
+    assert [row["date"] for row in stats] == [date(2026, 7, 3), date(2026, 7, 8)]
+    cost_2 = 110 / 1000 * 3.81
+    cost_3 = 120 / 1000 * 3.81
+    assert stats[0]["sum"] == pytest.approx(10.0 + cost_2)
+    assert stats[1]["sum"] == pytest.approx(10.0 + cost_2 + cost_3)
+
+
+def test_compute_cost_stats_deduplicates_last_record_wins() -> None:
+    """A duplicated date keeps only the last record's cost for that date."""
+    daily = [
+        {"date_releve": "2026-07-01", "consommation": {"litre": 100}},
+        {"date_releve": "2026-07-01", "consommation": {"litre": 999}},
+    ]
+    stats = _compute_cost_stats(daily, price_per_m3=3.81)
+    assert len(stats) == 1
+    assert stats[0]["state"] == pytest.approx(999 / 1000 * 3.81)
 
 
 # --------------------------------------------------------------------------
