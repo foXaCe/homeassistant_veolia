@@ -63,7 +63,8 @@
       "cannot_connect": "Unable to reach the Veolia commune lookup service",
       "commune_not_supported": "Sorry, your Veolia account is not supported by this integration. You must wait for the migration to the new site (this step depends solely on Veolia). Once the migration is done, please try again.",
       "no_communes_found": "No communes found for this postal code",
-      "commune_not_veolia": "Veolia does not provide water in this commune"
+      "commune_not_veolia": "Veolia does not provide water in this commune",
+      "commune_maintenance": "The Veolia portal for this commune is under maintenance. Please try again later."
     },
     "abort": {
       "already_configured": "This account is already configured",

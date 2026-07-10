@@ -63,7 +63,8 @@
       "cannot_connect": "Impossible de joindre le service de recherche des communes Veolia",
       "commune_not_supported": "Désolé, votre compte Veolia n'est pas pris en charge par cette intégration. Vous devez attendre la migration vers le nouveau site (cette étape dépend uniquement de Veolia). Une fois la migration effectuée, veuillez réessayer.",
       "no_communes_found": "Aucune commune trouvée pour ce code postal",
-      "commune_not_veolia": "Veolia ne fournit pas d'eau dans cette commune"
+      "commune_not_veolia": "Veolia ne fournit pas d'eau dans cette commune",
+      "commune_maintenance": "Le portail Veolia de cette commune est en maintenance. Veuillez réessayer plus tard."
     },
     "abort": {
       "already_configured": "Ce compte est déjà configuré",

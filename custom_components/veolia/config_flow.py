@@ -34,6 +34,7 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     COMMUNE_TYPE_DIRECT,
+    COMMUNE_TYPE_MAINTENANCE,
     COMMUNE_TYPE_NOT_SERVED,
     COMMUNE_TYPE_REDIRECTED,
     COMMUNES_LOOKUP_URL,
@@ -195,6 +196,8 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "commune_not_supported"
             elif commune_type == COMMUNE_TYPE_NOT_SERVED:
                 errors["base"] = "commune_not_veolia"
+            elif commune_type == COMMUNE_TYPE_MAINTENANCE:
+                errors["base"] = "commune_maintenance"
             else:
                 errors["base"] = "commune_not_supported"
 

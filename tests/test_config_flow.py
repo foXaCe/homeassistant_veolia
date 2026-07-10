@@ -152,6 +152,27 @@ async def test_flow_commune_not_served(
     assert result["errors"] == {"base": "commune_not_veolia"}
 
 
+async def test_flow_commune_maintenance(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """An EN_MAINTENANCE commune shows the commune_maintenance error."""
+    commune_maintenance = {
+        "libelle": "Commune En Maintenance",
+        "type_commune": "EN_MAINTENANCE",
+    }
+    _mock_communes(aioclient_mock, commune_maintenance)
+    result = await _start_to_select_commune(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"commune": commune_maintenance["libelle"]}
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "select_commune"
+    assert result["errors"] == {"base": "commune_maintenance"}
+
+
 async def test_flow_no_communes_found(
     recorder_mock: Recorder,
     hass: HomeAssistant,
