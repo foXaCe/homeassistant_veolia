@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from freezegun.api import FrozenDateTimeFactory
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -130,38 +130,6 @@ async def test_sensor_unique_id_pattern(
         assert key in expected_keys
 
 
-async def test_statistics_imported_on_add_and_on_update(
-    recorder_mock: Recorder,
-    hass: HomeAssistant,
-    enable_custom_integrations: None,
-    mock_config_entry: MockConfigEntry,
-    mock_veolia_api: MagicMock,
-) -> None:
-    """Statistics are imported when the entity is added and on every update."""
-    mock_config_entry.add_to_hass(hass)
-    with patch(
-        "custom_components.veolia.statistics.async_import_statistics"
-    ) as mock_import:
-        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
-
-        # 3 sensors provide a statistics_fn: last_index, daily_consumption,
-        # monthly_consumption.
-        assert mock_import.call_count == 3
-        statistic_ids = {
-            call.args[1]["statistic_id"] for call in mock_import.call_args_list
-        }
-        entity_registry = er.async_get(hass)
-        last_index_entity_id = _entity_id(entity_registry, "last_index")
-        assert last_index_entity_id in statistic_ids
-
-        coordinator = mock_config_entry.runtime_data
-        await coordinator.async_refresh()
-        await hass.async_block_till_done()
-
-        assert mock_import.call_count == 6
-
-
 async def test_sensors_unavailable_when_update_failed(
     recorder_mock: Recorder,
     hass: HomeAssistant,
@@ -202,23 +170,3 @@ async def test_billing_index_unknown_on_non_numeric_value(
     entity_registry = er.async_get(hass)
     entity_id = _entity_id(entity_registry, "billing_index")
     assert hass.states.get(entity_id).state == "unknown"
-
-
-async def test_no_statistics_imported_when_series_empty(
-    recorder_mock: Recorder,
-    hass: HomeAssistant,
-    enable_custom_integrations: None,
-    mock_config_entry: MockConfigEntry,
-    mock_veolia_api: MagicMock,
-) -> None:
-    """No recorder import happens when a sensor's statistics series is empty."""
-    mock_veolia_api.account_data.daily_consumption = []
-    mock_veolia_api.account_data.monthly_consumption = []
-    mock_config_entry.add_to_hass(hass)
-    with patch(
-        "custom_components.veolia.statistics.async_import_statistics"
-    ) as mock_import:
-        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
-
-        mock_import.assert_not_called()

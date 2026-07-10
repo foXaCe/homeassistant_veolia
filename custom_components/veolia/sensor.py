@@ -13,17 +13,15 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import CURRENCY_EURO, UnitOfVolume
-from homeassistant.core import callback
 
 from .entity import VeoliaBaseEntity
-from .statistics import import_volume_statistics
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
     from .data import VeoliaConfigEntry
-    from .model import StatisticsRow, VeoliaModel
+    from .model import VeoliaModel
 
 PARALLEL_UPDATES = 0
 
@@ -54,8 +52,6 @@ class VeoliaSensorEntityDescription(SensorEntityDescription):
 
     value_fn: Callable[[VeoliaModel], Any]
     attributes_fn: Callable[[VeoliaModel], dict[str, Any]] | None = None
-    statistics_fn: Callable[[VeoliaModel], list[StatisticsRow]] | None = None
-    statistics_unit: str | None = None
 
 
 SENSORS: tuple[VeoliaSensorEntityDescription, ...] = (
@@ -73,14 +69,11 @@ SENSORS: tuple[VeoliaSensorEntityDescription, ...] = (
                 data.computed.last_date.isoformat() if data.computed.last_date else None
             ),
         },
-        statistics_fn=lambda data: data.computed.index_stats_m3,
-        statistics_unit=UnitOfVolume.CUBIC_METERS,
     ),
     VeoliaSensorEntityDescription(
         key="daily_consumption",
         translation_key="daily_consumption",
         device_class=SensorDeviceClass.WATER,
-        state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfVolume.LITERS,
         suggested_display_precision=0,
         value_fn=lambda data: data.computed.last_daily_liters,
@@ -91,26 +84,20 @@ SENSORS: tuple[VeoliaSensorEntityDescription, ...] = (
             ),
             "today": data.computed.daily_today_liters,
         },
-        statistics_fn=lambda data: data.computed.daily_stats_liters,
-        statistics_unit=UnitOfVolume.LITERS,
     ),
     VeoliaSensorEntityDescription(
         key="monthly_consumption",
         translation_key="monthly_consumption",
         device_class=SensorDeviceClass.WATER,
-        state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
         suggested_display_precision=3,
         value_fn=lambda data: data.computed.monthly_latest_m3,
         attributes_fn=lambda data: {"data_type": data.computed.monthly_fiability},
-        statistics_fn=lambda data: data.computed.monthly_stats_cubic_meters,
-        statistics_unit=UnitOfVolume.CUBIC_METERS,
     ),
     VeoliaSensorEntityDescription(
         key="annual_consumption",
         translation_key="annual_consumption",
         device_class=SensorDeviceClass.WATER,
-        state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
         suggested_display_precision=3,
         value_fn=lambda data: data.computed.annual_total_m3,
@@ -202,26 +189,3 @@ class VeoliaSensor(VeoliaBaseEntity, SensorEntity):
         if self.entity_description.attributes_fn is None:
             return None
         return self.entity_description.attributes_fn(self.coordinator.data)
-
-    async def async_added_to_hass(self) -> None:
-        """Import historical statistics once registered."""
-        await super().async_added_to_hass()
-        self._import_statistics()
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Refresh statistics on every coordinator update."""
-        self._import_statistics()
-        super()._handle_coordinator_update()
-
-    def _import_statistics(self) -> None:
-        """Import recorder statistics when the description provides them."""
-        description = self.entity_description
-        if description.statistics_fn is None or description.statistics_unit is None:
-            return
-        import_volume_statistics(
-            self.hass,
-            self.entity_id,
-            description.statistics_fn(self.coordinator.data),
-            description.statistics_unit,
-        )

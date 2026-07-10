@@ -6,7 +6,7 @@ computed from the raw account data returned by the API client.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, TypedDict
@@ -26,9 +26,14 @@ from .const import (
 
 
 class StatisticsRow(TypedDict):
-    """One recorder statistics row (cumulative sum series)."""
+    """One statistics point keyed by calendar date.
 
-    start: datetime
+    Converted to a tz-aware (local midnight) ``start`` by ``statistics.py``
+    at import time; kept as a plain calendar date here to preserve the
+    purity of this module (no Home Assistant imports).
+    """
+
+    date: date
     state: float
     sum: float
 
@@ -68,9 +73,36 @@ def _to_float(value: Any) -> float | None:
         return None
 
 
-def _midnight_utc(d: date) -> datetime:
-    """Return midnight UTC for calendar date ``d``."""
-    return datetime(d.year, d.month, d.day, tzinfo=UTC)
+def _sorted_unique_by_date(
+    records: list[dict[str, Any]],
+    date_fn: Callable[[dict[str, Any]], date | None] | None = None,
+) -> list[tuple[date, dict[str, Any]]]:
+    """Parse each record's date, sort by date and keep the last per date.
+
+    ``date_fn`` extracts the calendar date from a record; it defaults to
+    parsing the daily ``DATA_DATE`` field. Records whose date cannot be
+    determined are dropped.
+    """
+    extract = date_fn or (lambda rec: _parse_date(rec.get(DATA_DATE, "")))
+    by_date: dict[date, dict[str, Any]] = {}
+    for rec in records:
+        d = extract(rec)
+        if d is None:
+            continue
+        by_date[d] = rec
+    return sorted(by_date.items())
+
+
+def _monthly_record_date(rec: dict[str, Any]) -> date | None:
+    """Return the first-of-month calendar date for a monthly record."""
+    year = rec.get(YEAR)
+    month = rec.get(MONTH)
+    if not year or not month:
+        return None
+    try:
+        return date(int(year), int(month), 1)
+    except (TypeError, ValueError):
+        return None
 
 
 def _compute_annual_total(monthly: list[dict[str, Any]], year: int) -> float | None:
@@ -87,50 +119,72 @@ def _compute_annual_total(monthly: list[dict[str, Any]], year: int) -> float | N
         return None
 
 
-def _compute_daily_stats(daily: list[dict[str, Any]]) -> list[StatisticsRow]:
-    """Build cumulative daily-consumption statistics rows (liters)."""
+def _compute_daily_stats(
+    daily: list[dict[str, Any]],
+    *,
+    initial_sum: float = 0.0,
+    after: date | None = None,
+) -> list[StatisticsRow]:
+    """Build cumulative daily-consumption statistics rows (liters).
+
+    Records are sorted by date and deduplicated (last record per date
+    wins) before the running sum is computed. ``initial_sum`` anchors the
+    running total to a previously imported statistic, and any record dated
+    on or before ``after`` is skipped: API corrections therefore only
+    apply to the most recently imported row, which the coordinator
+    re-imports by rewinding the anchor one row back.
+    """
     stats: list[StatisticsRow] = []
-    cumul = 0
-    for rec in daily:
-        d = _parse_date(rec.get(DATA_DATE, ""))
-        if d is None:
+    cumul = initial_sum
+    for d, rec in _sorted_unique_by_date(daily):
+        if after is not None and d <= after:
             continue
         liters = int((rec.get(CONSO) or {}).get(LITRE) or 0)
         cumul += liters
-        stats.append({"start": _midnight_utc(d), "state": liters, "sum": cumul})
+        stats.append({"date": d, "state": liters, "sum": cumul})
     return stats
 
 
-def _compute_monthly_stats(monthly: list[dict[str, Any]]) -> list[StatisticsRow]:
-    """Build cumulative monthly-consumption statistics rows (m³)."""
+def _compute_monthly_stats(
+    monthly: list[dict[str, Any]],
+    *,
+    initial_sum: float = 0.0,
+    after: date | None = None,
+) -> list[StatisticsRow]:
+    """Build cumulative monthly-consumption statistics rows (m³).
+
+    See ``_compute_daily_stats`` for the anchoring/dedup/sort semantics.
+    """
     stats: list[StatisticsRow] = []
-    cumul = 0.0
-    for rec in monthly:
-        year = rec.get(YEAR)
-        month = rec.get(MONTH)
-        if not year or not month:
-            continue
-        try:
-            start = datetime(int(year), int(month), 1, tzinfo=UTC)
-        except (TypeError, ValueError):
+    cumul = initial_sum
+    for d, rec in _sorted_unique_by_date(monthly, _monthly_record_date):
+        if after is not None and d <= after:
             continue
         cubic_meter = float((rec.get(CONSO) or {}).get(CUBIC_METER) or 0)
         cumul += cubic_meter
-        stats.append({"start": start, "state": cubic_meter, "sum": cumul})
+        stats.append({"date": d, "state": cubic_meter, "sum": cumul})
     return stats
 
 
 def _compute_index_stats(
-    daily: list[dict[str, Any]], today: date
+    daily: list[dict[str, Any]],
+    *,
+    after: date | None = None,
 ) -> list[StatisticsRow]:
-    """Build meter-index statistics rows (m³), forward-filling missing days."""
+    """Build meter-index statistics rows (m³).
+
+    Records are sorted by date and deduplicated first. Gaps between two
+    consecutive real readings are forward-filled with the previous reading's
+    state, but there is no forward-fill past the last real reading: filling
+    up to "today" would be invalidated by the next refresh once ``after``
+    anchors the series. Rows dated on or before ``after`` are omitted from
+    the output, though earlier readings still seed the forward-fill state
+    used for the days right after the anchor.
+    """
     stats: list[StatisticsRow] = []
     prev_state: float | None = None
     prev_date: date | None = None
-    for record in daily:
-        d = _parse_date(record.get(DATA_DATE, ""))
-        if d is None:
-            continue
+    for d, record in _sorted_unique_by_date(daily):
         idx = (record.get(IDX) or {}).get(CUBIC_METER)
         cur_state = _to_float(idx)
         if cur_state is None:
@@ -138,24 +192,15 @@ def _compute_index_stats(
         # Forward-fill the gap between two consecutive readings.
         if prev_date is not None and prev_state is not None:
             for i in range(1, (d - prev_date).days):
-                fill = prev_date + timedelta(days=i)
-                stats.append(
-                    {
-                        "start": _midnight_utc(fill),
-                        "state": prev_state,
-                        "sum": prev_state,
-                    }
-                )
-        stats.append({"start": _midnight_utc(d), "state": cur_state, "sum": cur_state})
+                fill_date = prev_date + timedelta(days=i)
+                if after is None or fill_date > after:
+                    stats.append(
+                        {"date": fill_date, "state": prev_state, "sum": prev_state}
+                    )
+        if after is None or d > after:
+            stats.append({"date": d, "state": cur_state, "sum": cur_state})
         prev_state = cur_state
         prev_date = d
-    # Forward-fill from the last reading up to today (inclusive).
-    if prev_date is not None and prev_state is not None:
-        for i in range(1, (today - prev_date).days + 1):
-            fill = prev_date + timedelta(days=i)
-            stats.append(
-                {"start": _midnight_utc(fill), "state": prev_state, "sum": prev_state}
-            )
     return stats
 
 
@@ -214,9 +259,6 @@ class VeoliaComputed:
     last_date: date | None
     daily_fiability: str | None
     monthly_fiability: str | None
-    daily_stats_liters: list[StatisticsRow]
-    monthly_stats_cubic_meters: list[StatisticsRow]
-    index_stats_m3: list[StatisticsRow]
     daily_today_liters: int | None
     daily_today_m3: float | None
     daily_today_fiability: str | None
@@ -282,9 +324,6 @@ class VeoliaModel:
             last_date=last_date,
             daily_fiability=last_daily.get(IDX_FIABILITY),
             monthly_fiability=last_month.get(CONSO_FIABILITY),
-            daily_stats_liters=_compute_daily_stats(daily),
-            monthly_stats_cubic_meters=_compute_monthly_stats(monthly),
-            index_stats_m3=_compute_index_stats(daily, today),
             daily_today_liters=daily_today_liters,
             daily_today_m3=daily_today_m3,
             daily_today_fiability=daily_today_fiability,

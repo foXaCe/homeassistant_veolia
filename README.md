@@ -72,6 +72,10 @@ L'intégration Veolia permet de visualiser les données de consommation d'eau en
 
 > Pour visualiser les informations à la bonne date, il est nécessaire d'utiliser le sensor de consommation journalière (l'utilisation du sensor index compteur générera un décalage dans les dates).
 
+> [!IMPORTANT]
+>
+> **Migration statistiques (changement cassant)** : les statistiques long-terme sont désormais publiées sous les identifiants `veolia:..._daily_consumption`, `veolia:..._monthly_consumption` et `veolia:..._index` (au lieu des statistiques des entités `sensor.veolia_*`). Re-sélectionnez la source d'eau dans `Paramètres` → `Tableaux de bord` → `Énergie`, et purgez les anciennes séries via `Outils de développement` → `Statistiques` (« Corriger le problème » sur les entités listées).
+
 #### 1. Ajout au dashboard énergie de Home Assistant
 
 <a href=""><img src="images/dashboard_eau.png" alt="Dashboard énergie eau"></a>
