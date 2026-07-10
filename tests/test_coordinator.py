@@ -60,19 +60,39 @@ def mock_statistics_anchor() -> Generator[AsyncMock]:
 
 def test_anchored_series_params_no_anchor() -> None:
     """Without an anchor, the series is imported from scratch."""
-    assert _anchored_series_params(None) == (0.0, None)
+    assert _anchored_series_params(None, set()) == (0.0, None)
 
 
 def test_anchored_series_params_rewinds_one_row() -> None:
     """The cutoff rewinds one day and the sum restarts from before the last row."""
     anchor = LastStat(sum=4200.0, state=120.0, date=date(2026, 7, 5))
-    assert _anchored_series_params(anchor) == (4080.0, date(2026, 7, 4))
+    assert _anchored_series_params(anchor, {anchor.date}) == (4080.0, date(2026, 7, 4))
 
 
 def test_anchored_series_params_state_none_falls_back_to_strict() -> None:
     """A stored row without a state falls back to strict (non-rewound) anchoring."""
     anchor = LastStat(sum=4200.0, state=None, date=date(2026, 7, 5))
-    assert _anchored_series_params(anchor) == (4200.0, date(2026, 7, 5))
+    assert _anchored_series_params(anchor, {anchor.date}) == (4200.0, date(2026, 7, 5))
+
+
+def test_anchored_series_params_missing_anchor_row_falls_back_to_strict() -> None:
+    """If the anchor day vanished from the fetch, fall back to strict anchoring.
+
+    Rewinding onto a vanished row would subtract its contribution from the
+    running sum without ever re-adding it, making the recorder ``sum``
+    regress (see plan 013). The fetch here covers 07-01, 07-02 and 07-04 but
+    not the 07-03 anchor day itself.
+    """
+    anchor = LastStat(sum=450.0, state=200.0, date=date(2026, 7, 3))
+    fetched_dates = {date(2026, 7, 1), date(2026, 7, 2), date(2026, 7, 4)}
+    assert _anchored_series_params(anchor, fetched_dates) == (450.0, date(2026, 7, 3))
+
+
+def test_anchored_series_params_rewinds_when_anchor_row_present() -> None:
+    """When the anchor day is still present in the fetch, rewind as before."""
+    anchor = LastStat(sum=450.0, state=200.0, date=date(2026, 7, 3))
+    fetched_dates = {date(2026, 7, 2), date(2026, 7, 3), date(2026, 7, 4)}
+    assert _anchored_series_params(anchor, fetched_dates) == (250.0, date(2026, 7, 2))
 
 
 async def test_coordinator_update_success(

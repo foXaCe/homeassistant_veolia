@@ -14,7 +14,9 @@ from custom_components.veolia.model import (
     _compute_index_stats,
     _compute_monthly_stats,
     _find_last_for_date,
+    _monthly_record_date,
     _parse_date,
+    _record_dates,
     _safe_last,
     _to_float,
 )
@@ -119,6 +121,41 @@ def test_find_last_for_date_empty() -> None:
     """An empty/None record list is handled."""
     assert _find_last_for_date([], date(2026, 7, 5)) is None
     assert _find_last_for_date(None, date(2026, 7, 5)) is None  # type: ignore[arg-type]
+
+
+# --------------------------------------------------------------------------
+# _record_dates
+# --------------------------------------------------------------------------
+
+
+def test_record_dates_daily() -> None:
+    """Out-of-order, duplicated and undated records are handled like the builders."""
+    daily = [
+        {"date_releve": "2026-07-03", "consommation": {"litre": 100}},
+        {"date_releve": "2026-07-01", "consommation": {"litre": 50}},
+        {"date_releve": "2026-07-01", "consommation": {"litre": 999}},
+        {"consommation": {"litre": 10}},
+    ]
+    assert _record_dates(daily) == {date(2026, 7, 1), date(2026, 7, 3)}
+
+
+def test_record_dates_monthly() -> None:
+    """With `_monthly_record_date`, the year/month pairs are extracted."""
+    monthly = [
+        {"annee": 2026, "mois": 2, "consommation": {"m3": 2.0}},
+        {"annee": 2026, "mois": 1, "consommation": {"m3": 1.0}},
+        {"annee": 2026, "mois": 1, "consommation": {"m3": 9.0}},
+        {"mois": 3, "consommation": {"m3": 3.0}},
+    ]
+    assert _record_dates(monthly, _monthly_record_date) == {
+        date(2026, 1, 1),
+        date(2026, 2, 1),
+    }
+
+
+def test_record_dates_empty_list() -> None:
+    """An empty list of records yields an empty set of dates."""
+    assert _record_dates([]) == set()
 
 
 # --------------------------------------------------------------------------

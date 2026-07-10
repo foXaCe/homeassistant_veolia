@@ -37,6 +37,8 @@ from .model import (
     _compute_daily_stats,
     _compute_index_stats,
     _compute_monthly_stats,
+    _monthly_record_date,
+    _record_dates,
 )
 from .statistics import (
     LastStat,
@@ -51,7 +53,10 @@ if TYPE_CHECKING:
     from .data import VeoliaConfigEntry
 
 
-def _anchored_series_params(anchor: LastStat | None) -> tuple[float, date | None]:
+def _anchored_series_params(
+    anchor: LastStat | None,
+    fetched_dates: set[date],
+) -> tuple[float, date | None]:
     """Return the (initial_sum, after) builder parameters for an anchored series.
 
     Implements the one-row rewind: the ``after`` cutoff is moved one day
@@ -60,13 +65,19 @@ def _anchored_series_params(anchor: LastStat | None) -> tuple[float, date | None
     with its current API value — the recorder upserts rows sharing the
     same ``start`` — so a partial value (in-progress month, provisional
     last day) converges to its final value on later refreshes, while every
-    older row stays immutable. Without an anchor the series is imported
-    from scratch; if the stored row has no ``state`` (not expected for
-    these series), fall back to strict anchoring (last row immutable).
+    older row stays immutable.
+
+    The rewind only happens when the anchor row is present in the fresh
+    fetch (``anchor.date in fetched_dates``): rewinding onto a vanished
+    row would subtract its contribution from the running sum without ever
+    re-adding it, making the recorder ``sum`` regress. When the anchor row
+    is missing — or has no stored ``state`` — fall back to strict
+    anchoring (last row immutable, sum continues from ``anchor.sum``).
+    Without an anchor the series is imported from scratch.
     """
     if anchor is None:
         return 0.0, None
-    if anchor.state is None:
+    if anchor.state is None or anchor.date not in fetched_dates:
         return anchor.sum, anchor.date
     return anchor.sum - anchor.state, anchor.date - timedelta(days=1)
 
@@ -162,8 +173,13 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         daily = account_data.daily_consumption or []
         monthly = account_data.monthly_consumption or []
 
-        daily_initial_sum, daily_after = _anchored_series_params(daily_anchor)
-        monthly_initial_sum, monthly_after = _anchored_series_params(monthly_anchor)
+        daily_initial_sum, daily_after = _anchored_series_params(
+            daily_anchor, fetched_dates=_record_dates(daily)
+        )
+        monthly_initial_sum, monthly_after = _anchored_series_params(
+            monthly_anchor,
+            fetched_dates=_record_dates(monthly, _monthly_record_date),
+        )
         # The index series carries absolute values (sum == state), so only
         # the rewound cutoff matters: re-importing its last row is safe.
         index_after = index_anchor.date - timedelta(days=1) if index_anchor else None
