@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.const import EntityCategory
 
-from .entity import VeoliaBaseEntity
+from .entity import VeoliaAlertEntity
 from .helpers import is_unoccupied_mode
 
 if TYPE_CHECKING:
@@ -86,7 +86,7 @@ async def async_setup_entry(
     )
 
 
-class VeoliaSwitch(VeoliaBaseEntity, SwitchEntity):
+class VeoliaSwitch(VeoliaAlertEntity, SwitchEntity):
     """Veolia alert switch driven by its entity description."""
 
     entity_description: VeoliaSwitchEntityDescription
@@ -99,26 +99,14 @@ class VeoliaSwitch(VeoliaBaseEntity, SwitchEntity):
             return None
         return self.entity_description.is_on_fn(settings)
 
-    @property
-    def available(self) -> bool:
-        """Combine coordinator health with alert-specific availability."""
-        settings = self.coordinator.data.alert_settings
-        return (
-            super().available
-            and settings is not None
-            and self.entity_description.available_fn(settings)
-        )
-
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        await self.coordinator.async_set_alert_settings(
+        await self._async_push_alert_settings(
             **self.entity_description.turn_on_settings
         )
-        self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        await self.coordinator.async_set_alert_settings(
+        await self._async_push_alert_settings(
             **self.entity_description.turn_off_settings
         )
-        self.async_write_ha_state()

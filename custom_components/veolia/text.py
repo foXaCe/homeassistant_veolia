@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from homeassistant.components.text import TextEntity, TextEntityDescription
 from homeassistant.const import EntityCategory
 
-from .entity import VeoliaBaseEntity
+from .entity import VeoliaAlertEntity
 from .helpers import is_unoccupied_mode
 
 if TYPE_CHECKING:
@@ -30,6 +30,9 @@ class VeoliaTextEntityDescription(TextEntityDescription):
     value_fn: Callable[[AlertSettings], str]
     enable_settings_fn: Callable[[int], Mapping[str, bool | int]]
     disable_settings: Mapping[str, bool | int]
+    available_fn: Callable[[AlertSettings], bool] = lambda settings: (
+        not is_unoccupied_mode(settings)
+    )
 
 
 TEXTS: tuple[VeoliaTextEntityDescription, ...] = (
@@ -78,7 +81,7 @@ async def async_setup_entry(
     async_add_entities(VeoliaText(coordinator, description) for description in TEXTS)
 
 
-class VeoliaText(VeoliaBaseEntity, TextEntity):
+class VeoliaText(VeoliaAlertEntity, TextEntity):
     """Veolia alert-threshold text entity driven by its entity description."""
 
     entity_description: VeoliaTextEntityDescription
@@ -91,16 +94,6 @@ class VeoliaText(VeoliaBaseEntity, TextEntity):
             return None
         return self.entity_description.value_fn(settings)
 
-    @property
-    def available(self) -> bool:
-        """Combine coordinator health with alert-specific availability."""
-        settings = self.coordinator.data.alert_settings
-        return (
-            super().available
-            and settings is not None
-            and not is_unoccupied_mode(settings)
-        )
-
     async def async_set_value(self, value: str) -> None:
         """Set the threshold; zero disables the alert."""
         threshold = int(value)
@@ -108,5 +101,4 @@ class VeoliaText(VeoliaBaseEntity, TextEntity):
             changes = self.entity_description.disable_settings
         else:
             changes = self.entity_description.enable_settings_fn(threshold)
-        await self.coordinator.async_set_alert_settings(**changes)
-        self.async_write_ha_state()
+        await self._async_push_alert_settings(**changes)
