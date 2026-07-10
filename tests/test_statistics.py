@@ -87,7 +87,7 @@ async def test_import_volume_statistics_full_metadata(
     assert metadata == {
         "mean_type": StatisticMeanType.NONE,
         "has_sum": True,
-        "name": f"Veolia daily consumption {MOCK_ACCOUNT_ID}",
+        "name": f"Veolia consommation journalière {MOCK_ACCOUNT_ID}",
         "source": DOMAIN,
         "statistic_id": DAILY_STATISTIC_ID,
         "unit_class": VolumeConverter.UNIT_CLASS,

@@ -80,7 +80,7 @@ L'intégration Veolia permet de visualiser les données de consommation d'eau en
 
 <a href=""><img src="images/dashboard_eau.png" alt="Dashboard énergie eau"></a>
 
-Pour ajouter la consommation d'eau au dashboard énergie de Home Assistant, allez dans `Énergie` -> crayon en haut à droite -> `Eau` -> `Ajouter une consommation d'eau` -> Dans le champ `Consommation d'eau` choisissez la statistique `Veolia daily consumption xxx` (identifiant `veolia:xxx_daily_consumption`)
+Pour ajouter la consommation d'eau au dashboard énergie de Home Assistant, allez dans `Énergie` -> crayon en haut à droite -> `Eau` -> `Ajouter une consommation d'eau` -> Dans le champ `Consommation d'eau` choisissez la statistique `Veolia consommation journalière xxx` (identifiant `veolia:xxx_daily_consumption`)
 
 <a href=""><img src="images/consommation.png" alt="Consommation d'eau"></a>
 

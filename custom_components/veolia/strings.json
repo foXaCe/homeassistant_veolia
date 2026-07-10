@@ -86,6 +86,12 @@
     }
   },
   "exceptions": {
+    "auth_failed": {
+      "message": "Authentication with the Veolia portal failed; please update your credentials."
+    },
+    "update_failed": {
+      "message": "Error while fetching Veolia data: {error}"
+    },
     "set_alert_failed": {
       "message": "The Veolia portal rejected the alert settings update."
     },
