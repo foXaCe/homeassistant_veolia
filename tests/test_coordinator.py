@@ -76,6 +76,26 @@ async def test_coordinator_periodic_fetch_uses_two_month_window(
     assert second_call.args == (date(2026, 6, 1), date(2026, 7, 1))
 
 
+async def test_coordinator_periodic_fetch_handles_year_rollover(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """The periodic fetch window correctly rolls back across a year boundary."""
+    freezer.move_to("2026-01-15")
+    mock_config_entry.add_to_hass(hass)
+    coordinator = VeoliaDataUpdateCoordinator(hass, mock_config_entry)
+
+    await coordinator.async_refresh()
+    await coordinator.async_refresh()
+
+    assert mock_veolia_api.fetch_all_data.call_count == 2
+    first_call, second_call = mock_veolia_api.fetch_all_data.call_args_list
+    assert first_call.args == (date(2025, 1, 1), date(2026, 1, 1))
+    assert second_call.args == (date(2025, 12, 1), date(2026, 1, 1))
+
+
 async def test_coordinator_auth_failed_triggers_reauth(
     recorder_mock: Recorder,
     hass: HomeAssistant,

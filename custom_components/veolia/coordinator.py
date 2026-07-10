@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
-from dateutil.relativedelta import relativedelta
 from veolia_api import VeoliaAPI
 from veolia_api.exceptions import VeoliaAPIError, VeoliaAPIInvalidCredentialsError
 
@@ -59,7 +58,7 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
             start_date = date(end_date.year - 1, end_date.month, 1)
         else:
             LOGGER.debug("Periodic fetch: two months of history")
-            start_date = end_date - relativedelta(months=1)
+            start_date = (end_date - timedelta(days=1)).replace(day=1)
 
         try:
             await self.client_api.fetch_all_data(start_date, end_date)
