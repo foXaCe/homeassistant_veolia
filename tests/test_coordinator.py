@@ -12,7 +12,11 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from veolia_api.exceptions import VeoliaAPIError, VeoliaAPIInvalidCredentialsError
 
-from custom_components.veolia.const import DEFAULT_SCAN_INTERVAL_HOURS
+from custom_components.veolia.const import (
+    CONSECUTIVE_FAILURES_FOR_ISSUE,
+    DEFAULT_SCAN_INTERVAL_HOURS,
+    DOMAIN,
+)
 from custom_components.veolia.coordinator import (
     VeoliaDataUpdateCoordinator,
     _anchored_series_params,
@@ -23,6 +27,7 @@ from homeassistant.components.recorder import Recorder
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .const import MOCK_ACCOUNT_ID
@@ -205,6 +210,67 @@ async def test_coordinator_update_failed_on_network_error(
 
     assert coordinator.last_update_success is False
     assert isinstance(coordinator.last_exception, UpdateFailed)
+
+
+async def test_coordinator_creates_api_down_issue_after_threshold(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+    mock_statistics_anchor: AsyncMock,
+) -> None:
+    """CONSECUTIVE_FAILURES_FOR_ISSUE consecutive failures raise the api_down issue.
+
+    No issue exists before the threshold is reached (anti-flapping): a
+    transient blip of fewer failures than the threshold must not create it.
+    """
+    mock_config_entry.add_to_hass(hass)
+    coordinator = VeoliaDataUpdateCoordinator(hass, mock_config_entry)
+    mock_veolia_api.fetch_all_data.side_effect = VeoliaAPIError("boom")
+    issue_id = f"api_down_{mock_config_entry.entry_id}"
+    issue_registry = ir.async_get(hass)
+
+    for _ in range(CONSECUTIVE_FAILURES_FOR_ISSUE - 1):
+        await coordinator.async_refresh()
+        assert issue_registry.async_get_issue(DOMAIN, issue_id) is None
+
+    await coordinator.async_refresh()
+
+    assert issue_registry.async_get_issue(DOMAIN, issue_id) is not None
+
+
+async def test_coordinator_api_down_issue_cleared_on_success_and_streak_resets(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+    mock_statistics_anchor: AsyncMock,
+) -> None:
+    """A successful refresh clears the api_down issue and resets the failure streak."""
+    mock_config_entry.add_to_hass(hass)
+    coordinator = VeoliaDataUpdateCoordinator(hass, mock_config_entry)
+    mock_veolia_api.fetch_all_data.side_effect = VeoliaAPIError("boom")
+    issue_id = f"api_down_{mock_config_entry.entry_id}"
+    issue_registry = ir.async_get(hass)
+
+    for _ in range(CONSECUTIVE_FAILURES_FOR_ISSUE):
+        await coordinator.async_refresh()
+    assert issue_registry.async_get_issue(DOMAIN, issue_id) is not None
+
+    mock_veolia_api.fetch_all_data.side_effect = None
+    await coordinator.async_refresh()
+
+    assert coordinator.last_update_success is True
+    assert issue_registry.async_get_issue(DOMAIN, issue_id) is None
+
+    # The streak was reset by the success above: a fresh outage must run
+    # through the full threshold again before the issue reappears.
+    mock_veolia_api.fetch_all_data.side_effect = VeoliaAPIError("boom again")
+    for _ in range(CONSECUTIVE_FAILURES_FOR_ISSUE - 1):
+        await coordinator.async_refresh()
+        assert issue_registry.async_get_issue(DOMAIN, issue_id) is None
+
+    await coordinator.async_refresh()
+
+    assert issue_registry.async_get_issue(DOMAIN, issue_id) is not None
 
 
 async def test_update_interval_from_options(

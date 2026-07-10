@@ -10,11 +10,15 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from veolia_api.exceptions import VeoliaAPIError, VeoliaAPIInvalidCredentialsError
 
 from custom_components.veolia import async_migrate_entry
-from custom_components.veolia.const import DOMAIN
+from custom_components.veolia.const import CONF_PORTAL_URL, DOMAIN
 from homeassistant.components.recorder import Recorder
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import (
+    device_registry as dr,
+    entity_registry as er,
+    issue_registry as ir,
+)
 
 from .const import MOCK_ACCOUNT_ID, MOCK_CONFIG_ENTRY_DATA
 
@@ -79,6 +83,55 @@ async def test_setup_entry_auth_failed_starts_reauth(
     assert len(flows) == 1
     assert flows[0]["context"]["source"] == "reauth"
     assert flows[0]["context"]["entry_id"] == mock_config_entry.entry_id
+
+
+async def test_setup_entry_unknown_portal_creates_issue_and_fails(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """A portal no longer supported by the client package fails setup and raises a repair issue."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=2,
+        unique_id=MOCK_ACCOUNT_ID,
+        data={**MOCK_CONFIG_ENTRY_DATA, CONF_PORTAL_URL: "www.portail-disparu.fr"},
+        entry_id="unknown_portal_entry_id",
+    )
+    entry.add_to_hass(hass)
+
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.SETUP_ERROR
+    issue_registry = ir.async_get(hass)
+    assert (
+        issue_registry.async_get_issue(DOMAIN, f"unknown_portal_{entry.entry_id}")
+        is not None
+    )
+
+
+async def test_setup_entry_known_portal_has_no_unknown_portal_issue(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """A supported portal never leaves an unknown_portal repair issue behind."""
+    mock_config_entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    issue_registry = ir.async_get(hass)
+    assert (
+        issue_registry.async_get_issue(
+            DOMAIN, f"unknown_portal_{mock_config_entry.entry_id}"
+        )
+        is None
+    )
 
 
 async def test_migration_v1_to_v2(

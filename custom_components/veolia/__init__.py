@@ -5,10 +5,16 @@ from __future__ import annotations
 import aiohttp
 from veolia_api import VeoliaAPI
 from veolia_api.exceptions import VeoliaAPIError
+from veolia_api.portals import VEOLIA_PORTAL_CLIENTS
 
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.exceptions import ConfigEntryError
+from homeassistant.helpers import (
+    device_registry as dr,
+    entity_registry as er,
+    issue_registry as ir,
+)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 
@@ -28,6 +34,25 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> bool:
     """Set up Veolia from a config entry."""
+    portal_url = entry.data.get(CONF_PORTAL_URL)
+    issue_id = f"unknown_portal_{entry.entry_id}"
+    if portal_url is not None and portal_url not in VEOLIA_PORTAL_CLIENTS:
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            issue_id,
+            is_fixable=False,
+            severity=ir.IssueSeverity.ERROR,
+            translation_key="unknown_portal",
+            translation_placeholders={"portal": portal_url},
+        )
+        raise ConfigEntryError(
+            translation_domain=DOMAIN,
+            translation_key="unknown_portal",
+            translation_placeholders={"portal": portal_url},
+        )
+    ir.async_delete_issue(hass, DOMAIN, issue_id)
+
     coordinator = VeoliaDataUpdateCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
 

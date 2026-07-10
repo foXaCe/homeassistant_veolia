@@ -17,11 +17,18 @@ from homeassistant.const import (
     UnitOfVolume,
 )
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_PORTAL_URL, DEFAULT_SCAN_INTERVAL_HOURS, DOMAIN, LOGGER
+from .const import (
+    CONF_PORTAL_URL,
+    CONSECUTIVE_FAILURES_FOR_ISSUE,
+    DEFAULT_SCAN_INTERVAL_HOURS,
+    DOMAIN,
+    LOGGER,
+)
 from .model import (
     VeoliaModel,
     _compute_daily_stats,
@@ -85,6 +92,7 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
             session=async_get_clientsession(hass),
             portal_url=entry.data.get(CONF_PORTAL_URL),
         )
+        self._consecutive_failures = 0
 
     async def _async_update_data(self) -> VeoliaModel:
         """Fetch consumption data, compute the model and import statistics.
@@ -125,10 +133,14 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
             raise ConfigEntryAuthFailed(exception) from exception
         except VeoliaAPIError as exception:
             # Transient error (network, rate limit, API down) → retry next cycle.
+            self._register_failure()
             raise UpdateFailed(exception) from exception
         except (aiohttp.ClientError, TimeoutError) as exception:
             # Network/transport error that escaped the client's retry layer.
+            self._register_failure()
             raise UpdateFailed(exception) from exception
+
+        self._register_success()
 
         account_data = self.client_api.account_data
         model = VeoliaModel.from_account_data(account_data, today=today)
@@ -169,6 +181,32 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         )
 
         return model
+
+    def _register_failure(self) -> None:
+        """Track a failed refresh and raise a repair issue past the threshold.
+
+        The issue is created exactly once (``==``, not ``>=``) once the
+        streak reaches ``CONSECUTIVE_FAILURES_FOR_ISSUE`` consecutive
+        failures, so a long outage surfaces a single actionable repair issue
+        instead of flapping on every subsequent failed cycle.
+        """
+        self._consecutive_failures += 1
+        if self._consecutive_failures == CONSECUTIVE_FAILURES_FOR_ISSUE:
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                f"api_down_{self.config_entry.entry_id}",
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="api_down",
+            )
+
+    def _register_success(self) -> None:
+        """Reset the failure streak and clear any ``api_down`` repair issue."""
+        self._consecutive_failures = 0
+        ir.async_delete_issue(
+            self.hass, DOMAIN, f"api_down_{self.config_entry.entry_id}"
+        )
 
     async def async_set_alert_settings(self, **changes: bool | int) -> None:
         """Apply alert-settings changes and push them to the Veolia API.
