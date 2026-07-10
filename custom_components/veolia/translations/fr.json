@@ -166,5 +166,12 @@
         "name": "Alerte logement vide"
       }
     }
+  },
+  "system_health": {
+    "info": {
+      "configured_accounts": "Comptes configurés",
+      "last_update_success": "Dernière actualisation réussie",
+      "can_reach_server": "Portail Veolia joignable"
+    }
   }
 }

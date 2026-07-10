@@ -166,5 +166,12 @@
         "name": "Unoccupied alert"
       }
     }
+  },
+  "system_health": {
+    "info": {
+      "configured_accounts": "Configured accounts",
+      "last_update_success": "Last refresh successful",
+      "can_reach_server": "Veolia portal reachable"
+    }
   }
 }

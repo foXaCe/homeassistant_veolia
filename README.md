@@ -163,6 +163,12 @@ Votre portail n'est pas géré ? Voir [CONTRIBUTING.md](CONTRIBUTING.md#ajouter-
 3. Ouvrez Paramètres -> Intégrations -> Ajouter une intégration -> recherchez `Veolia`
 4. Suivez les instructions pour configurer l'intégration
 
+## Exemples d'automatisations
+
+Notification de surconsommation, mode logement vide pendant les vacances,
+seuils saisonniers, rappel de prélèvement : voir
+[docs/automations.md](docs/automations.md).
+
 ## Bug et demande de fonctionnalités
 
 - [Ouvrir une issue](https://github.com/foXaCe/homeassistant_veolia/issues)
