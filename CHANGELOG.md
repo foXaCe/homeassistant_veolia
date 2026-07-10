@@ -9,6 +9,13 @@ Ce fichier est maintenu automatiquement par
 [release-please](https://github.com/googleapis/release-please) à partir des
 conventional commits.
 
+## [3.0.2](https://github.com/foXaCe/homeassistant_veolia/compare/v3.0.1...v3.0.2) (2026-07-10)
+
+
+### Fixed
+
+* translate coordinator errors and use French statistic names ([#17](https://github.com/foXaCe/homeassistant_veolia/issues/17)) ([3c7505a](https://github.com/foXaCe/homeassistant_veolia/commit/3c7505a406a879bf65e06b5f390784f82ab03da5))
+
 ## [3.0.1](https://github.com/foXaCe/homeassistant_veolia/compare/v3.0.0...v3.0.1) (2026-07-10)
 
 
