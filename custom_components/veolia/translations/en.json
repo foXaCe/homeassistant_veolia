@@ -16,7 +16,7 @@
         "title": "Select your commune",
         "description": "Select your commune.\n\n{unsupported_portal}",
         "data": {
-          "commune": "Please select your commune from the list below :"
+          "commune": "Please select your commune from the list below:"
         },
         "data_description": {
           "commune": "The commune determines which Veolia portal serves your account."
@@ -61,7 +61,7 @@
       "invalid_credentials": "Invalid username or password",
       "unknown": "Unable to connect, check the logs for more information",
       "cannot_connect": "Unable to reach the Veolia commune lookup service",
-      "commune_not_supported": "Sorry, your Veolia account is not supported. You must wait for the migration to the new site.",
+      "commune_not_supported": "Sorry, your Veolia account is not supported by this integration. You must wait for the migration to the new site (this step depends solely on Veolia). Once the migration is done, please try again.",
       "no_communes_found": "No communes found for this postal code",
       "commune_not_veolia": "Veolia does not provide water in this commune"
     },
