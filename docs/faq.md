@@ -12,9 +12,19 @@ Voir [Portails Veolia supportés](../README.md#portails-veolia-supportés). Les 
 
 ## Puis-je ajouter la consommation au dashboard Énergie ?
 
-Oui : utilisez le sensor `sensor.veolia_xxx_conso_journaliere` (voir le
-[README](../README.md#1-ajout-au-dashboard-énergie-de-home-assistant)).
-N'utilisez pas le sensor d'index compteur (décalage de dates).
+Oui : sélectionnez la **statistique externe** `Veolia daily consumption xxx`
+(identifiant `veolia:xxx_daily_consumption`) — voir le
+[README](../README.md#1-ajout-au-dashboard-énergie-de-home-assistant).
+Ces statistiques sont datées du **jour de relevé réel** (Veolia publie avec
+~2 jours de retard), contrairement aux capteurs qui ne changent qu'au moment
+de l'actualisation. Les capteurs `sensor.veolia_*` restent utiles pour le
+« live » mais ne produisent plus de statistiques long-terme.
+
+## Les jours « estimés » par Veolia sont-ils comptés ?
+
+Oui — les jours dont l'index est estimé sont importés tels quels (aucun trou
+artificiel). La valeur du dernier jour importé est ré-importée à chaque
+actualisation, elle converge donc automatiquement vers la valeur définitive.
 
 ## Les alertes envoient-elles des notifications dans Home Assistant ?
 

@@ -16,9 +16,9 @@
     "veolia_api",
     "tenacity"
   ],
-  "quality_scale": "silver",
+  "quality_scale": "platinum",
   "requirements": [
-    "veolia-api-foxace==2.3.0"
+    "veolia-api-foxace==2.4.0"
   ],
   "version": "2.4.0"
 }

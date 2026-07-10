@@ -41,6 +41,7 @@ Entités : sensor (9) / binary_sensor (3) / switch (3) / text (2)
 | `switch.py`        | 3 interrupteurs d'alertes via descriptions (`turn_on/off_settings`), catégorie configuration |
 | `text.py`          | 2 seuils d'alerte via descriptions (0 = désactivation), catégorie configuration |
 | `diagnostics.py`   | Diagnostics de config entry avec redaction des données sensibles          |
+| `system_health.py` | System health : comptes configurés, santé du dernier refresh, joignabilité du portail (`async_check_can_reach_url`) |
 | `const.py`         | Toutes les constantes (`Final`), zéro string magique ailleurs             |
 | `icons.json`       | Icônes (y compris icônes par état on/off)                                 |
 | `strings.json`     | Source de vérité des traductions ; `translations/en.json` en est la copie |

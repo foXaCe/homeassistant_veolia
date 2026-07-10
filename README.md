@@ -70,7 +70,7 @@ Informations supplémentaires :
 
 L'intégration Veolia permet de visualiser les données de consommation d'eau en natif dans Home Assistant. Elle re-télécharge l'historique du mois en cours depuis Veolia et met à jour la base de données Home Assistant.
 
-> Pour visualiser les informations à la bonne date, il est nécessaire d'utiliser le sensor de consommation journalière (l'utilisation du sensor index compteur générera un décalage dans les dates).
+> Veolia publie les données avec ~2 jours de retard : pour que chaque journée soit visualisée **à sa vraie date**, l'intégration publie des **statistiques externes datées** (`veolia:xxx_daily_consumption`, `veolia:xxx_monthly_consumption`, `veolia:xxx_index`) au jour de relevé réel. Ce sont elles qu'il faut utiliser dans le dashboard Énergie et les cartes statistiques — pas les capteurs, qui ne changent qu'au moment de l'actualisation.
 
 > [!IMPORTANT]
 >
@@ -80,7 +80,7 @@ L'intégration Veolia permet de visualiser les données de consommation d'eau en
 
 <a href=""><img src="images/dashboard_eau.png" alt="Dashboard énergie eau"></a>
 
-Pour ajouter la consommation d'eau au dashboard énergie de Home Assistant, allez dans `Énergie` -> crayon en haut à droite -> `Eau` -> `Ajouter une consommation d'eau` -> Dans le champ `Consommation d'eau` choisissez `sensor.veolia_xxx_conso_journaliere`
+Pour ajouter la consommation d'eau au dashboard énergie de Home Assistant, allez dans `Énergie` -> crayon en haut à droite -> `Eau` -> `Ajouter une consommation d'eau` -> Dans le champ `Consommation d'eau` choisissez la statistique `Veolia daily consumption xxx` (identifiant `veolia:xxx_daily_consumption`)
 
 <a href=""><img src="images/consommation.png" alt="Consommation d'eau"></a>
 
@@ -101,11 +101,11 @@ Pour ajouter la consommation d'eau au dashboard énergie de Home Assistant, alle
 
 <a href=""><img src="images/historique.png" alt="Historique de consommation"></a>
 
-Pour ajouter la carte de consommation d'eau journalière, sur votre dashboard, cliquez sur `Ajouter une carte` puis sélectionnez `Graphique des statistiques` et choisissez l'entité `sensor.veolia_xxx_conso_journaliere`, configurez la carte comme l'exemple ci-dessous :
+Pour ajouter la carte de consommation d'eau journalière, sur votre dashboard, cliquez sur `Ajouter une carte` puis sélectionnez `Graphique des statistiques` et choisissez la statistique `veolia:xxx_daily_consumption`, configurez la carte comme l'exemple ci-dessous :
 
 <a href=""><img src="images/config_carte.png" alt="Configuration de la carte"></a>
 
-> #### **Note :** La carte Graphique des statistiques ne fonctionnera qu'avec le sensor `sensor.veolia_xxx_conso_journaliere`
+> #### **Note :** La carte Graphique des statistiques ne fonctionne qu'avec les statistiques externes `veolia:xxx_*` — les capteurs `sensor.veolia_*` n'enregistrent plus de statistiques long-terme (leurs valeurs seraient datées de l'heure d'actualisation, pas du jour de relevé réel).
 
 ## Vérifier l'éligibilité de votre commune
 
@@ -162,6 +162,12 @@ Votre portail n'est pas géré ? Voir [CONTRIBUTING.md](CONTRIBUTING.md#ajouter-
 2. Redémarrez Home Assistant
 3. Ouvrez Paramètres -> Intégrations -> Ajouter une intégration -> recherchez `Veolia`
 4. Suivez les instructions pour configurer l'intégration
+
+## Exemples d'automatisations
+
+Notification de surconsommation, mode logement vide pendant les vacances,
+seuils saisonniers, rappel de prélèvement : voir
+[docs/automations.md](docs/automations.md).
 
 ## Bug et demande de fonctionnalités
 
