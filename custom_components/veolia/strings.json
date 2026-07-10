@@ -14,7 +14,7 @@
       },
       "select_commune": {
         "title": "Select your commune",
-        "description": "",
+        "description": "Select your commune.\n\n{unsupported_portal}",
         "data": {
           "commune": "Please select your commune from the list below :"
         },

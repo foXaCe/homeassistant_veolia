@@ -167,6 +167,7 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Handle the selection of a commune."""
         errors: dict[str, str] = {}
+        unsupported_hint = ""
         if user_input is not None:
             selected = next(
                 (
@@ -188,6 +189,7 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
                 if hostname in VEOLIA_PORTAL_CLIENTS:
                     self._portal_url = hostname
                     return await self.async_step_credentials()
+                unsupported_hint = hostname
                 errors["base"] = "commune_not_supported"
             elif commune_type == COMMUNE_TYPE_NOT_SERVED:
                 errors["base"] = "commune_not_veolia"
@@ -209,6 +211,7 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+            description_placeholders={"unsupported_portal": unsupported_hint},
         )
 
     async def async_step_credentials(

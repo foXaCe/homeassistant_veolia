@@ -123,12 +123,16 @@ async def test_flow_redirige_unsupported_portal(
     """A REDIRIGE commune to an unsupported portal shows an error."""
     _mock_communes(aioclient_mock, COMMUNE_REDIRECTED_UNSUPPORTED)
     result = await _start_to_select_commune(hass)
+    assert result["description_placeholders"] == {"unsupported_portal": ""}
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"commune": COMMUNE_REDIRECTED_UNSUPPORTED["libelle"]}
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "select_commune"
     assert result["errors"] == {"base": "commune_not_supported"}
+    assert result["description_placeholders"] == {
+        "unsupported_portal": "www.unknown-portal.fr"
+    }
 
 
 async def test_flow_commune_not_served(
