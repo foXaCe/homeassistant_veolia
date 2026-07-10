@@ -12,7 +12,7 @@ Voir [Portails Veolia supportés](../README.md#portails-veolia-supportés). Les 
 
 ## Puis-je ajouter la consommation au dashboard Énergie ?
 
-Oui : sélectionnez la **statistique externe** `Veolia daily consumption xxx`
+Oui : sélectionnez la **statistique externe** `Veolia consommation journalière xxx`
 (identifiant `veolia:xxx_daily_consumption`) — voir le
 [README](../README.md#1-ajout-au-dashboard-énergie-de-home-assistant).
 Ces statistiques sont datées du **jour de relevé réel** (Veolia publie avec

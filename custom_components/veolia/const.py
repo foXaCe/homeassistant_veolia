@@ -33,6 +33,13 @@ COMMUNES_LOOKUP_URL: Final = (
     "https://prd-ael-sirius-refcommunes.istefr.fr/communes-nationales"
 )
 
+# Display names of the recorder external statistics. The recorder has no
+# translation mechanism for statistic names; the integration only serves the
+# French Veolia portals, so the names are French by design.
+STATISTIC_NAME_DAILY: Final = "Veolia consommation journalière {account_id}"
+STATISTIC_NAME_MONTHLY: Final = "Veolia consommation mensuelle {account_id}"
+STATISTIC_NAME_INDEX: Final = "Veolia index compteur {account_id}"
+
 # API constants keys
 IDX: Final = "index"
 LITRE: Final = "litre"

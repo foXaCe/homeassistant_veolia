@@ -23,8 +23,8 @@
         }
       },
       "credentials": {
-        "title": "Informations d'identification",
-        "description": "Bonne nouvelle, votre compte Veolia fonctionne avec cette intégration. Veuillez saisir vos informations de connexion Veolia :",
+        "title": "Identifiants",
+        "description": "Bonne nouvelle, votre compte Veolia fonctionne avec cette intégration. Veuillez saisir vos identifiants Veolia :",
         "data": {
           "username": "Nom d'utilisateur",
           "password": "Mot de passe"
@@ -86,6 +86,12 @@
     }
   },
   "exceptions": {
+    "auth_failed": {
+      "message": "L'authentification auprès du portail Veolia a échoué ; veuillez mettre à jour vos identifiants."
+    },
+    "update_failed": {
+      "message": "Erreur lors de la récupération des données Veolia : {error}"
+    },
     "set_alert_failed": {
       "message": "Le portail Veolia a rejeté la mise à jour des réglages d'alerte."
     },

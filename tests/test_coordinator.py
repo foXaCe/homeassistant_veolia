@@ -173,6 +173,8 @@ async def test_coordinator_auth_failed_triggers_reauth(
     await hass.async_block_till_done()
 
     assert coordinator.last_update_success is False
+    assert coordinator.last_exception is not None
+    assert coordinator.last_exception.translation_key == "auth_failed"
     flows = hass.config_entries.flow.async_progress()
     assert len(flows) == 1
     assert flows[0]["context"]["source"] == "reauth"
@@ -193,6 +195,8 @@ async def test_coordinator_update_failed_on_api_error(
 
     assert coordinator.last_update_success is False
     assert isinstance(coordinator.last_exception, UpdateFailed)
+    assert coordinator.last_exception.translation_key == "update_failed"
+    assert coordinator.last_exception.translation_placeholders == {"error": "boom"}
 
 
 async def test_coordinator_update_failed_on_network_error(

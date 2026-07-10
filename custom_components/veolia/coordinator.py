@@ -28,6 +28,9 @@ from .const import (
     DEFAULT_SCAN_INTERVAL_HOURS,
     DOMAIN,
     LOGGER,
+    STATISTIC_NAME_DAILY,
+    STATISTIC_NAME_INDEX,
+    STATISTIC_NAME_MONTHLY,
 )
 from .model import (
     VeoliaModel,
@@ -130,15 +133,26 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
             await self.client_api.fetch_all_data(start_date, end_date)
         except VeoliaAPIInvalidCredentialsError as exception:
             # Bad credentials → trigger the reauthentication flow.
-            raise ConfigEntryAuthFailed(exception) from exception
+            raise ConfigEntryAuthFailed(
+                translation_domain=DOMAIN,
+                translation_key="auth_failed",
+            ) from exception
         except VeoliaAPIError as exception:
             # Transient error (network, rate limit, API down) → retry next cycle.
             self._register_failure()
-            raise UpdateFailed(exception) from exception
+            raise UpdateFailed(
+                translation_domain=DOMAIN,
+                translation_key="update_failed",
+                translation_placeholders={"error": str(exception)},
+            ) from exception
         except (aiohttp.ClientError, TimeoutError) as exception:
             # Network/transport error that escaped the client's retry layer.
             self._register_failure()
-            raise UpdateFailed(exception) from exception
+            raise UpdateFailed(
+                translation_domain=DOMAIN,
+                translation_key="update_failed",
+                translation_placeholders={"error": str(exception)},
+            ) from exception
 
         self._register_success()
 
@@ -157,7 +171,7 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         import_volume_statistics(
             self.hass,
             daily_statistic_id,
-            f"Veolia daily consumption {account_id}",
+            STATISTIC_NAME_DAILY.format(account_id=account_id),
             _compute_daily_stats(
                 daily, initial_sum=daily_initial_sum, after=daily_after
             ),
@@ -166,7 +180,7 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         import_volume_statistics(
             self.hass,
             monthly_statistic_id,
-            f"Veolia monthly consumption {account_id}",
+            STATISTIC_NAME_MONTHLY.format(account_id=account_id),
             _compute_monthly_stats(
                 monthly, initial_sum=monthly_initial_sum, after=monthly_after
             ),
@@ -175,7 +189,7 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
         import_volume_statistics(
             self.hass,
             index_statistic_id,
-            f"Veolia meter index {account_id}",
+            STATISTIC_NAME_INDEX.format(account_id=account_id),
             _compute_index_stats(daily, after=index_after),
             UnitOfVolume.CUBIC_METERS,
         )
