@@ -34,7 +34,7 @@ _Intégration Home Assistant pour Veolia Eau (compatible avec https://www.eau.ve
 - État des alertes de consommation d'eau
 - Date de la dernière relève de consommation d'eau
 
-> #### **Note :** Les données de l'intégration sont mises à jour toutes les 12h.
+> #### **Note :** Les données de l'intégration sont mises à jour toutes les 6h par défaut (intervalle configurable de 1 à 24h dans les options de l'intégration).
 
 ### Capteurs
 
@@ -165,7 +165,7 @@ Votre portail n'est pas géré ? Voir [CONTRIBUTING.md](CONTRIBUTING.md#ajouter-
 
 ## API Veolia
 
-Cette intégration utilise le client API Python [veolia-api](https://github.com/Jezza34000/veolia-api).
+Cette intégration utilise le client API Python [veolia-api-foxace](https://github.com/foXaCe/veolia-api) (fork de [veolia-api](https://github.com/Jezza34000/veolia-api)).
 
 ## Contribuer
 
