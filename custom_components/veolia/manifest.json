@@ -20,5 +20,5 @@
   "requirements": [
     "veolia-api-foxace==2.4.3"
   ],
-  "version": "4.0.0"
+  "version": "4.0.1"
 }
