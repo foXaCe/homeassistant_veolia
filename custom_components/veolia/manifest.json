@@ -18,7 +18,7 @@
   ],
   "quality_scale": "platinum",
   "requirements": [
-    "veolia-api-foxace==2.4.1"
+    "veolia-api-foxace==2.4.3"
   ],
   "version": "4.0.0"
 }
