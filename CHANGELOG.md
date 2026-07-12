@@ -9,6 +9,13 @@ Ce fichier est maintenu automatiquement par
 [release-please](https://github.com/googleapis/release-please) à partir des
 conventional commits.
 
+## [4.0.1](https://github.com/foXaCe/homeassistant_veolia/compare/v4.0.0...v4.0.1) (2026-07-12)
+
+
+### Fixed
+
+* bump veolia-api-foxace to 2.4.3 ([#25](https://github.com/foXaCe/homeassistant_veolia/issues/25)) ([66241bb](https://github.com/foXaCe/homeassistant_veolia/commit/66241bb75a1422ba7896a3ad77058b10b61a7a30))
+
 ## [4.0.0](https://github.com/foXaCe/homeassistant_veolia/compare/v3.0.2...v4.0.0) (2026-07-10)
 
 
