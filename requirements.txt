@@ -1,1 +1,1 @@
-veolia-api-foxace==2.4.3
+veolia-api-foxace==2.4.4
