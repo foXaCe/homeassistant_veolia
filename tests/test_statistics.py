@@ -113,7 +113,7 @@ async def test_import_volume_statistics_full_metadata(
         ) as mock_import,
     ):
         assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+        await hass.async_block_till_done(wait_background_tasks=True)
 
     call = next(
         c
@@ -153,7 +153,7 @@ async def test_import_cost_statistics_metadata_eur_no_unit_class(
         ) as mock_import,
     ):
         assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+        await hass.async_block_till_done(wait_background_tasks=True)
 
     call = next(
         c
@@ -193,7 +193,7 @@ async def test_first_import_cumulates_from_zero_with_local_midnight_starts(
         ) as mock_import,
     ):
         assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+        await hass.async_block_till_done(wait_background_tasks=True)
 
     call = next(
         c
@@ -241,7 +241,7 @@ async def test_continuity_rewinds_and_reimports_last_row(
         ) as mock_import,
     ):
         assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+        await hass.async_block_till_done(wait_background_tasks=True)
 
     call = next(
         c
@@ -294,7 +294,7 @@ async def test_sum_does_not_regress_when_anchor_day_vanishes(
         ) as mock_import,
     ):
         assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+        await hass.async_block_till_done(wait_background_tasks=True)
 
     call = next(
         c
@@ -339,7 +339,7 @@ async def test_current_month_value_updates_on_reimport(
         ) as mock_import,
     ):
         assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+        await hass.async_block_till_done(wait_background_tasks=True)
 
     call = next(
         c
@@ -387,7 +387,7 @@ async def test_dst_transition_keeps_local_midnight_starts(
         ) as mock_import,
     ):
         assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+        await hass.async_block_till_done(wait_background_tasks=True)
 
     call = next(
         c
@@ -437,7 +437,7 @@ async def test_no_op_when_no_data_on_or_after_rewound_anchor(
         ) as mock_import,
     ):
         assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+        await hass.async_block_till_done(wait_background_tasks=True)
 
     assert all(
         c.args[1]["statistic_id"] != DAILY_STATISTIC_ID

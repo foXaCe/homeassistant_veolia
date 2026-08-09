@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import aiohttp
 import pytest
@@ -34,32 +34,44 @@ async def test_setup_and_unload_entry(
     mock_config_entry.add_to_hass(hass)
 
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert mock_config_entry.state is ConfigEntryState.LOADED
     assert mock_config_entry.runtime_data is not None
 
     assert await hass.config_entries.async_unload(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert mock_config_entry.state is ConfigEntryState.NOT_LOADED
 
 
-async def test_setup_entry_not_ready_on_api_error(
+async def test_setup_entry_api_error_keeps_entry_loaded(
     recorder_mock: Recorder,
     hass: HomeAssistant,
     enable_custom_integrations: None,
     mock_config_entry: MockConfigEntry,
     mock_veolia_api: MagicMock,
 ) -> None:
-    """A VeoliaAPIError on the first refresh triggers a setup retry."""
+    """A VeoliaAPIError on the first refresh does not fail setup.
+
+    The initial refresh runs in the background so boot is not blocked on the
+    network round-trip; the entry stays loaded and the coordinator simply has
+    no data (entities unavailable) until a later refresh succeeds.
+    """
     mock_veolia_api.fetch_all_data.side_effect = VeoliaAPIError("boom")
     mock_config_entry.add_to_hass(hass)
 
-    assert not await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    with (
+        patch("custom_components.veolia.INITIAL_REFRESH_RETRIES", 1),
+        patch("custom_components.veolia.INITIAL_REFRESH_BACKOFF", 0.01),
+    ):
+        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
 
-    assert mock_config_entry.state is ConfigEntryState.SETUP_RETRY
+    assert mock_config_entry.state is ConfigEntryState.LOADED
+    coordinator = mock_config_entry.runtime_data
+    assert coordinator.last_update_success is False
+    assert coordinator.data is None
 
 
 async def test_setup_entry_auth_failed_starts_reauth(
@@ -75,10 +87,10 @@ async def test_setup_entry_auth_failed_starts_reauth(
     )
     mock_config_entry.add_to_hass(hass)
 
-    assert not await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
 
-    assert mock_config_entry.state is ConfigEntryState.SETUP_ERROR
+    assert mock_config_entry.state is ConfigEntryState.LOADED
     flows = hass.config_entries.flow.async_progress()
     assert len(flows) == 1
     assert flows[0]["context"]["source"] == "reauth"
@@ -102,7 +114,7 @@ async def test_setup_entry_unknown_portal_creates_issue_and_fails(
     entry.add_to_hass(hass)
 
     assert not await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert entry.state is ConfigEntryState.SETUP_ERROR
     issue_registry = ir.async_get(hass)
@@ -123,7 +135,7 @@ async def test_setup_entry_known_portal_has_no_unknown_portal_issue(
     mock_config_entry.add_to_hass(hass)
 
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     issue_registry = ir.async_get(hass)
     assert (
@@ -179,7 +191,7 @@ async def test_migration_v1_to_v2(
     )
 
     assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert entry.version == 2
     assert entry.unique_id == MOCK_ACCOUNT_ID
@@ -233,7 +245,7 @@ async def test_migration_v1_login_failure_returns_false(
     entry.add_to_hass(hass)
 
     assert not await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert entry.version == 1
     assert entry.state is ConfigEntryState.MIGRATION_ERROR
@@ -257,7 +269,7 @@ async def test_migration_v1_login_network_error_returns_false(
     entry.add_to_hass(hass)
 
     assert not await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert entry.version == 1
     assert entry.state is ConfigEntryState.MIGRATION_ERROR
@@ -281,7 +293,7 @@ async def test_migration_v1_login_ok_but_no_account_id_returns_false(
     entry.add_to_hass(hass)
 
     assert not await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert entry.version == 1
     assert entry.state is ConfigEntryState.MIGRATION_ERROR
@@ -317,5 +329,5 @@ async def test_migration_from_future_version_fails(
     # Also confirm the real setup path independently ends up in an error
     # state (Home Assistant's own version guard, not ours).
     assert not await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert entry.state is ConfigEntryState.MIGRATION_ERROR

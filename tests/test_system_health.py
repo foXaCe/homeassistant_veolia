@@ -41,7 +41,7 @@ async def test_system_health_reachable(
     assert await async_setup_component(hass, "system_health", {})
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     aioclient_mock.get(f"https://{DEFAULT_PORTAL_URL}", text="")
     info = await _resolved_info(hass)
@@ -65,7 +65,7 @@ async def test_system_health_unreachable(
     assert await async_setup_component(hass, "system_health", {})
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     aioclient_mock.get(f"https://{DEFAULT_PORTAL_URL}", exc=aiohttp.ClientError("boom"))
     info = await _resolved_info(hass)

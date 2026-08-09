@@ -28,7 +28,7 @@ async def test_options_flow_shows_default_scan_interval(
     """The init step shows the current (or default) scan interval."""
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     result = await hass.config_entries.options.async_init(mock_config_entry.entry_id)
     assert result["type"] is FlowResultType.FORM
@@ -48,14 +48,14 @@ async def test_options_flow_updates_scan_interval(
     """Submitting a new scan interval updates the entry options as an int."""
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     result = await hass.config_entries.options.async_init(mock_config_entry.entry_id)
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
         {CONF_SCAN_INTERVAL: 12, CONF_COST_PER_M3: DEFAULT_COST_PER_M3},
     )
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert mock_config_entry.options[CONF_SCAN_INTERVAL] == 12
@@ -74,7 +74,7 @@ async def test_options_flow_shows_default_cost_per_m3(
     """The init step shows the default water price when none is configured."""
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     result = await hass.config_entries.options.async_init(mock_config_entry.entry_id)
     schema = result["data_schema"].schema
@@ -92,14 +92,14 @@ async def test_options_flow_updates_cost_per_m3(
     """Submitting a new water price updates the entry options as a float."""
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     result = await hass.config_entries.options.async_init(mock_config_entry.entry_id)
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
         {CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL_HOURS, CONF_COST_PER_M3: 4.25},
     )
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert mock_config_entry.options[CONF_COST_PER_M3] == 4.25
@@ -122,7 +122,7 @@ async def test_options_flow_shows_previously_saved_value(
     )
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     schema = result["data_schema"].schema

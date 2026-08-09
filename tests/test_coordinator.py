@@ -293,7 +293,7 @@ async def test_coordinator_auth_failed_triggers_reauth(
     )
 
     await coordinator.async_refresh()
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert coordinator.last_update_success is False
     assert coordinator.last_exception is not None
@@ -437,7 +437,7 @@ async def test_async_set_alert_settings_success_pushes_and_refreshes(
     assert mock_veolia_api.fetch_all_data.call_count == 1
 
     await coordinator.async_set_alert_settings(daily_enabled=True, daily_threshold=200)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert coordinator.data.alert_settings.daily_threshold == 200
     mock_veolia_api.set_alerts_settings.assert_awaited_once()
@@ -464,7 +464,7 @@ async def test_async_set_alert_settings_success_applies_in_memory(
     assert coordinator.data.alert_settings.daily_notif_sms is False
 
     await coordinator.async_set_alert_settings(daily_notif_sms=True)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert coordinator.data.alert_settings.daily_notif_sms is True
 
@@ -517,7 +517,7 @@ async def test_async_set_alert_settings_serializes_concurrent_calls(
     await asyncio.sleep(0)
     release_first.set()
     await gather_task
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert mock_veolia_api.set_alerts_settings.await_count == 2
     second_pushed_settings = mock_veolia_api.set_alerts_settings.call_args_list[1].args[

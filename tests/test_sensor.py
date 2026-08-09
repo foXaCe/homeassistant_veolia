@@ -38,7 +38,7 @@ async def test_all_sensors_values_and_attributes(
     freezer.move_to("2026-07-08 12:00:00")
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
 
@@ -108,7 +108,7 @@ async def test_sensor_unique_id_pattern(
     """Every sensor unique_id follows the {account_id}_{key} pattern."""
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     expected_keys = {
@@ -143,7 +143,7 @@ async def test_sensors_unavailable_when_update_failed(
     """Sensors become unavailable when the coordinator's last update failed."""
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = _entity_id(entity_registry, "last_index")
@@ -152,7 +152,7 @@ async def test_sensors_unavailable_when_update_failed(
     mock_veolia_api.fetch_all_data.side_effect = VeoliaAPIError("boom")
     coordinator = mock_config_entry.runtime_data
     await coordinator.async_refresh()
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert hass.states.get(entity_id).state == STATE_UNAVAILABLE
 
@@ -168,7 +168,7 @@ async def test_billing_index_unknown_on_non_numeric_value(
     mock_veolia_api.account_data.dernier_index_releve = "not-a-number"
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = _entity_id(entity_registry, "billing_index")

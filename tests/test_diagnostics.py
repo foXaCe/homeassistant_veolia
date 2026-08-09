@@ -25,7 +25,7 @@ async def test_diagnostics_redacts_sensitive_fields(
     """Sensitive fields are redacted; statistics series are summarized."""
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     diagnostics = await async_get_config_entry_diagnostics(hass, mock_config_entry)
 
@@ -69,11 +69,11 @@ async def test_diagnostics_reports_update_failure(
     """last_update_success reflects a failed coordinator refresh."""
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     mock_veolia_api.fetch_all_data.side_effect = VeoliaAPIError("boom")
     await mock_config_entry.runtime_data.async_refresh()
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     diagnostics = await async_get_config_entry_diagnostics(hass, mock_config_entry)
     assert diagnostics["last_update_success"] is False

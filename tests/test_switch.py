@@ -45,7 +45,7 @@ async def _enable_switch(
     entity_id = _entity_id(entity_registry, key)
     entity_registry.async_update_entity(entity_id, disabled_by=None)
     await hass.config_entries.async_reload(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     return entity_id
 
 
@@ -62,7 +62,7 @@ async def test_daily_sms_switch_is_on(
     )
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = await _enable_switch(
@@ -81,7 +81,7 @@ async def test_switches_entity_category_and_default_disabled(
     """SMS switches are disabled by default; unoccupied switch is enabled."""
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     for key in ("daily_sms_alert_switch", "monthly_sms_alert_switch"):
@@ -108,7 +108,7 @@ async def test_daily_sms_switch_turn_on_payload(
     )
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = await _enable_switch(
@@ -121,7 +121,7 @@ async def test_daily_sms_switch_turn_on_payload(
         {ATTR_ENTITY_ID: entity_id},
         blocking=True,
     )
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     mock_veolia_api.set_alerts_settings.assert_awaited()
     pushed = mock_veolia_api.set_alerts_settings.call_args.args[0]
@@ -141,7 +141,7 @@ async def test_daily_sms_switch_turn_off_payload(
     )
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = await _enable_switch(
@@ -154,7 +154,7 @@ async def test_daily_sms_switch_turn_off_payload(
         {ATTR_ENTITY_ID: entity_id},
         blocking=True,
     )
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     mock_veolia_api.set_alerts_settings.assert_awaited()
     pushed = mock_veolia_api.set_alerts_settings.call_args.args[0]
@@ -174,7 +174,7 @@ async def test_unoccupied_switch_turn_on_off_payloads(
     )
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = _entity_id(entity_registry, "unoccupied_alert_switch")
@@ -183,7 +183,7 @@ async def test_unoccupied_switch_turn_on_off_payloads(
     await hass.services.async_call(
         "switch", SERVICE_TURN_ON, {ATTR_ENTITY_ID: entity_id}, blocking=True
     )
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     pushed_on = mock_veolia_api.set_alerts_settings.call_args.args[0]
     assert pushed_on.daily_enabled is True
@@ -194,7 +194,7 @@ async def test_unoccupied_switch_turn_on_off_payloads(
     await hass.services.async_call(
         "switch", SERVICE_TURN_OFF, {ATTR_ENTITY_ID: entity_id}, blocking=True
     )
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     pushed_off = mock_veolia_api.set_alerts_settings.call_args.args[0]
     assert pushed_off.daily_enabled is False
@@ -211,7 +211,7 @@ async def test_switch_is_on_none_when_settings_unavailable(
     mock_veolia_api.account_data.alert_settings = None
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     coordinator = mock_config_entry.runtime_data
     entity = VeoliaSwitch(coordinator, SWITCHES[0])
@@ -232,7 +232,7 @@ async def test_switch_turn_on_raises_on_api_failure(
     mock_veolia_api.set_alerts_settings.side_effect = VeoliaAPISetDataError("rejected")
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = _entity_id(entity_registry, "unoccupied_alert_switch")

@@ -38,7 +38,7 @@ async def test_daily_and_monthly_alert_on_off(
     )
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     daily = hass.states.get(_entity_id(entity_registry, "daily_alert_binary_sensor"))
@@ -62,7 +62,7 @@ async def test_unoccupied_alert_binary_sensor(
     )
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     unoccupied = hass.states.get(
@@ -92,7 +92,7 @@ async def test_binary_sensors_available_when_not_unoccupied(
     )
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     daily = hass.states.get(_entity_id(entity_registry, "daily_alert_binary_sensor"))
@@ -109,7 +109,7 @@ async def test_binary_sensors_entity_category_diagnostic(
     """All three binary sensors are diagnostic entities."""
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     for key in (
@@ -132,7 +132,7 @@ async def test_binary_sensor_unavailable_when_alert_settings_none(
     mock_veolia_api.account_data.alert_settings = None
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = _entity_id(entity_registry, "daily_alert_binary_sensor")

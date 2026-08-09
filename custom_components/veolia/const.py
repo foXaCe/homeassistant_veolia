@@ -32,6 +32,13 @@ DEFAULT_COST_PER_M3: Final = 3.81
 # 2 days of continuous outage).
 CONSECUTIVE_FAILURES_FOR_ISSUE: Final = 8
 
+# The initial refresh runs as a background task so entry setup never blocks
+# boot on the Veolia network round-trip. Retries (with a short backoff in
+# seconds) bridge a transient failure at startup until the regular
+# scan-interval refresh takes over.
+INITIAL_REFRESH_RETRIES: Final = 5
+INITIAL_REFRESH_BACKOFF: Final = 10
+
 # Commune lookup endpoint used by the config flow to check eligibility.
 COMMUNES_LOOKUP_URL: Final = (
     "https://prd-ael-sirius-refcommunes.istefr.fr/communes-nationales"

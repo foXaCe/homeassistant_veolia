@@ -39,7 +39,7 @@ async def test_daily_threshold_text_value_and_pattern(
     )
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = _entity_id(entity_registry, "daily_threshold_text")
@@ -63,7 +63,7 @@ async def test_monthly_threshold_text_value(
     )
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = _entity_id(entity_registry, "monthly_threshold_text")
@@ -83,7 +83,7 @@ async def test_set_value_zero_disables_daily_alert(
     )
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = _entity_id(entity_registry, "daily_threshold_text")
@@ -94,7 +94,7 @@ async def test_set_value_zero_disables_daily_alert(
         {ATTR_ENTITY_ID: entity_id, ATTR_VALUE: "0"},
         blocking=True,
     )
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     pushed = mock_veolia_api.set_alerts_settings.call_args.args[0]
     assert pushed.daily_enabled is False
@@ -113,7 +113,7 @@ async def test_set_value_nonzero_enables_daily_alert_with_exact_payload(
     )
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = _entity_id(entity_registry, "daily_threshold_text")
@@ -124,7 +124,7 @@ async def test_set_value_nonzero_enables_daily_alert_with_exact_payload(
         {ATTR_ENTITY_ID: entity_id, ATTR_VALUE: "200"},
         blocking=True,
     )
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     pushed = mock_veolia_api.set_alerts_settings.call_args.args[0]
     assert pushed.daily_enabled is True
@@ -146,7 +146,7 @@ async def test_set_value_nonzero_enables_monthly_alert_with_exact_payload(
     )
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = _entity_id(entity_registry, "monthly_threshold_text")
@@ -157,7 +157,7 @@ async def test_set_value_nonzero_enables_monthly_alert_with_exact_payload(
         {ATTR_ENTITY_ID: entity_id, ATTR_VALUE: "10"},
         blocking=True,
     )
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     pushed = mock_veolia_api.set_alerts_settings.call_args.args[0]
     assert pushed.monthly_enabled is True
@@ -176,7 +176,7 @@ async def test_text_unique_id_pattern(
     """Both text entities follow the {account_id}_{key} unique_id pattern."""
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entries = er.async_entries_for_config_entry(
@@ -201,7 +201,7 @@ async def test_text_unavailable_when_unoccupied_mode(
     )
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     entity_registry = er.async_get(hass)
     entity_id = _entity_id(entity_registry, "daily_threshold_text")
@@ -219,7 +219,7 @@ async def test_text_native_value_none_when_settings_unavailable(
     mock_veolia_api.account_data.alert_settings = None
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     coordinator = mock_config_entry.runtime_data
     entity = VeoliaText(coordinator, TEXTS[0])

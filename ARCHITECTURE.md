@@ -28,7 +28,7 @@ Entités : sensor (9) / binary_sensor (3) / switch (3) / text (2)
 
 | Fichier            | Rôle                                                                     |
 | ------------------ | ------------------------------------------------------------------------ |
-| `__init__.py`      | `async_setup_entry`/`async_unload_entry` + `async_migrate_entry` (v1→v2 : unique_id `{entry_id}_…` → `{account_id}_…`) |
+| `__init__.py`      | `async_setup_entry`/`async_unload_entry` + `async_migrate_entry` (v1→v2 : unique_id `{entry_id}_…` → `{account_id}_…`) ; le premier refresh tourne en **arrière-plan** (`_async_initial_refresh`, via `entry.async_create_background_task`) pour ne jamais bloquer le boot sur le round-trip réseau — reauth sur mauvais identifiants, retries bornés sinon, entités `unavailable` en attendant |
 | `config_flow.py`   | Flow UI (code postal → commune → identifiants) + reauth + reconfigure + options (`scan_interval`, `OptionsFlowWithReload`) |
 | `coordinator.py`   | `VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel])` ; fenêtre de fetch dérivée de l'ancre recorder (aucune statistique → 1 an, sinon depuis le mois de la dernière statistique) ; import des statistiques externes à chaque refresh ; écritures centralisées `async_set_alert_settings()` |
 | `data.py`          | `type VeoliaConfigEntry = ConfigEntry[VeoliaDataUpdateCoordinator]` — typage du `runtime_data` |

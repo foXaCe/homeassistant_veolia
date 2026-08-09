@@ -43,9 +43,23 @@ class VeoliaBaseEntity(CoordinatorEntity[VeoliaDataUpdateCoordinator]):
             manufacturer=NAME,
             name=NAME,
             entry_type=DeviceEntryType.SERVICE,
-            serial_number=data.numero_compteur,
+            # The entity is created before the initial data arrives (setup no
+            # longer blocks on the network fetch); the serial number is only
+            # known once the first refresh succeeded.
+            serial_number=data.numero_compteur if data is not None else None,
             configuration_url=f"https://{portal}",
         )
+
+    @property
+    def available(self) -> bool:
+        """Return whether the entity is available.
+
+        Requires a healthy coordinator *and* a first successful refresh:
+        entities are registered during entry setup, before the background
+        initial refresh has completed, so they stay unavailable until data
+        is available.
+        """
+        return super().available and self.coordinator.data is not None
 
 
 class AlertEntityDescription(Protocol):
@@ -63,13 +77,11 @@ class VeoliaAlertEntity(VeoliaBaseEntity):
     @property
     def available(self) -> bool:
         """Combine coordinator health with alert-specific availability."""
+        if not super().available:
+            return False
         settings = self.coordinator.data.alert_settings
         description = cast("AlertEntityDescription", self.entity_description)
-        return (
-            super().available
-            and settings is not None
-            and description.available_fn(settings)
-        )
+        return settings is not None and description.available_fn(settings)
 
     async def _async_push_alert_settings(self, **changes: bool | int) -> None:
         """Push alert-settings changes then refresh the entity state."""
