@@ -9,6 +9,13 @@ Ce fichier est maintenu automatiquement par
 [release-please](https://github.com/googleapis/release-please) à partir des
 conventional commits.
 
+## [4.0.3](https://github.com/foXaCe/homeassistant_veolia/compare/v4.0.2...v4.0.3) (2026-08-09)
+
+
+### Changed
+
+* run initial refresh in background to speed up boot ([#40](https://github.com/foXaCe/homeassistant_veolia/issues/40)) ([7e95335](https://github.com/foXaCe/homeassistant_veolia/commit/7e95335da00fb80075f43e2c3db10bf835495576))
+
 ## [4.0.2](https://github.com/foXaCe/homeassistant_veolia/compare/v4.0.1...v4.0.2) (2026-07-13)
 
 
