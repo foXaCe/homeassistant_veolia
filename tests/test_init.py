@@ -20,7 +20,7 @@ from homeassistant.helpers import (
     issue_registry as ir,
 )
 
-from .const import MOCK_ACCOUNT_ID, MOCK_CONFIG_ENTRY_DATA
+from .const import MOCK_ACCOUNT_ID, MOCK_CONFIG_ENTRY_DATA, MOCK_NUMERO_COMPTEUR
 
 
 async def test_setup_and_unload_entry(
@@ -72,6 +72,53 @@ async def test_setup_entry_api_error_keeps_entry_loaded(
     coordinator = mock_config_entry.runtime_data
     assert coordinator.last_update_success is False
     assert coordinator.data is None
+
+
+async def test_device_serial_number_filled_after_first_refresh(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """The device registry entry gains the meter serial number after the initial refresh.
+
+    The device is created during setup, before the background refresh has
+    completed, so the serial number is filled in once the first data arrives.
+    """
+    mock_config_entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_device(identifiers={(DOMAIN, MOCK_ACCOUNT_ID)})
+    assert device is not None
+    assert device.serial_number == MOCK_NUMERO_COMPTEUR
+
+
+async def test_device_serial_number_stays_none_when_unknown(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_config_entry: MockConfigEntry,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """A missing meter serial number leaves the device registry unchanged.
+
+    The initial refresh succeeds but the account carries no serial number; the
+    registry update is a no-op and no crash is raised.
+    """
+    mock_veolia_api.account_data.numero_compteur = None
+    mock_config_entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_device(identifiers={(DOMAIN, MOCK_ACCOUNT_ID)})
+    assert device is not None
+    assert device.serial_number is None
 
 
 async def test_setup_entry_auth_failed_starts_reauth(

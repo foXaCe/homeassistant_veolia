@@ -91,6 +91,7 @@ async def _async_initial_refresh(coordinator: VeoliaDataUpdateCoordinator) -> No
     for attempt in range(INITIAL_REFRESH_RETRIES + 1):
         await coordinator.async_refresh()
         if coordinator.last_update_success:
+            _async_update_device_serial(coordinator)
             return
         if isinstance(coordinator.last_exception, ConfigEntryAuthFailed):
             # The reauth flow was already started by the coordinator.
@@ -103,6 +104,26 @@ async def _async_initial_refresh(coordinator: VeoliaDataUpdateCoordinator) -> No
             )
             return
         await asyncio.sleep(INITIAL_REFRESH_BACKOFF)
+
+
+def _async_update_device_serial(coordinator: VeoliaDataUpdateCoordinator) -> None:
+    """Fill the device registry with the meter serial number once known.
+
+    The device is created from the entity ``DeviceInfo`` during setup, before
+    the initial refresh has completed, so the serial number is unknown then
+    and the registry entry is created without it. It becomes available in
+    ``coordinator.data`` once the first refresh succeeds; the registry entry
+    is updated at that point (a no-op when already set).
+    """
+    data = coordinator.data
+    if data is None or data.numero_compteur is None:
+        return
+    account_id = str(coordinator.config_entry.unique_id)
+    device_registry = dr.async_get(coordinator.hass)
+    if device := device_registry.async_get_device(identifiers={(DOMAIN, account_id)}):
+        device_registry.async_update_device(
+            device.id, serial_number=data.numero_compteur
+        )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> bool:
