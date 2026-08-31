@@ -120,7 +120,9 @@ def _async_update_device_serial(coordinator: VeoliaDataUpdateCoordinator) -> Non
         return
     account_id = str(coordinator.config_entry.unique_id)
     device_registry = dr.async_get(coordinator.hass)
-    if device := device_registry.async_get_device(identifiers={(DOMAIN, account_id)}):
+    if device := device_registry.async_get_device_by_identifier(
+        (DOMAIN, account_id), coordinator.config_entry.entry_id
+    ):
         device_registry.async_update_device(
             device.id, serial_number=data.numero_compteur
         )
@@ -186,8 +188,8 @@ async def async_migrate_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> 
         await er.async_migrate_entries(hass, entry.entry_id, _update_unique_id)
 
         device_registry = dr.async_get(hass)
-        device = device_registry.async_get_device(
-            identifiers={(DOMAIN, entry.entry_id)}
+        device = device_registry.async_get_device_by_identifier(
+            (DOMAIN, entry.entry_id), entry.entry_id
         )
         if device is not None:
             device_registry.async_update_device(

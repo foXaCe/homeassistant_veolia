@@ -92,7 +92,9 @@ async def test_device_serial_number_filled_after_first_refresh(
     await hass.async_block_till_done(wait_background_tasks=True)
 
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(identifiers={(DOMAIN, MOCK_ACCOUNT_ID)})
+    device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, MOCK_ACCOUNT_ID), mock_config_entry.entry_id
+    )
     assert device is not None
     assert device.serial_number == MOCK_NUMERO_COMPTEUR
 
@@ -116,7 +118,9 @@ async def test_device_serial_number_stays_none_when_unknown(
     await hass.async_block_till_done(wait_background_tasks=True)
 
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(identifiers={(DOMAIN, MOCK_ACCOUNT_ID)})
+    device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, MOCK_ACCOUNT_ID), mock_config_entry.entry_id
+    )
     assert device is not None
     assert device.serial_number is None
 
@@ -256,13 +260,16 @@ async def test_migration_v1_to_v2(
         )
         assert new_entity_id is not None
 
-    migrated_device = device_registry.async_get_device(
-        identifiers={(DOMAIN, MOCK_ACCOUNT_ID)}
+    migrated_device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, MOCK_ACCOUNT_ID), entry.entry_id
     )
     assert migrated_device is not None
     assert migrated_device.id == device.id
     assert (
-        device_registry.async_get_device(identifiers={(DOMAIN, entry.entry_id)}) is None
+        device_registry.async_get_device_by_identifier(
+            (DOMAIN, entry.entry_id), entry.entry_id
+        )
+        is None
     )
 
     # The non-matching entity keeps its unique_id unchanged.
