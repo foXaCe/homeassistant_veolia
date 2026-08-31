@@ -9,6 +9,13 @@ Ce fichier est maintenu automatiquement par
 [release-please](https://github.com/googleapis/release-please) à partir des
 conventional commits.
 
+## [4.1.0](https://github.com/foXaCe/homeassistant_veolia/compare/v4.0.3...v4.1.0) (2026-08-31)
+
+
+### Added
+
+* utiliser async_get_device_by_identifier (dépréciation registre) ([#46](https://github.com/foXaCe/homeassistant_veolia/issues/46)) ([4eb38a6](https://github.com/foXaCe/homeassistant_veolia/commit/4eb38a65eb78d15d074fb791845f5a20124652bb))
+
 ## [4.0.3](https://github.com/foXaCe/homeassistant_veolia/compare/v4.0.2...v4.0.3) (2026-08-09)
 
 
