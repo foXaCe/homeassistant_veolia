@@ -9,6 +9,18 @@ Ce fichier est maintenu automatiquement par
 [release-please](https://github.com/googleapis/release-please) à partir des
 conventional commits.
 
+## [4.2.0](https://github.com/foXaCe/homeassistant_veolia/compare/v4.1.0...v4.2.0) (2026-09-03)
+
+
+### Added
+
+* choix de la méthode d'authentification, avec le jeton de rafraîchissement ([#53](https://github.com/foXaCe/homeassistant_veolia/issues/53)) ([b07b234](https://github.com/foXaCe/homeassistant_veolia/commit/b07b234c9b5911d8f6f2edbe075a968de01c3dc9))
+
+
+### Documentation
+
+* dire qu'il n'y a qu'une heure de service en mode jeton ([#55](https://github.com/foXaCe/homeassistant_veolia/issues/55)) ([4d1ca1f](https://github.com/foXaCe/homeassistant_veolia/commit/4d1ca1faa4404d7bc45095ba6a99100cfdb3e19b))
+
 ## [4.1.0](https://github.com/foXaCe/homeassistant_veolia/compare/v4.0.3...v4.1.0) (2026-08-31)
 
 
