@@ -26,6 +26,7 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_COST_PER_M3,
     CONF_PORTAL_URL,
+    CONF_REFRESH_TOKEN,
     CONSECUTIVE_FAILURES_FOR_ISSUE,
     COST_CURRENCY,
     DEFAULT_COST_PER_M3,
@@ -106,11 +107,16 @@ class VeoliaDataUpdateCoordinator(DataUpdateCoordinator[VeoliaModel]):
             update_interval=timedelta(hours=scan_interval),
         )
         LOGGER.debug("Initializing client VeoliaAPI")
+        # An entry created through the refresh-token step holds no credentials:
+        # its portal challenges password sign-ins with a code it cannot deliver.
+        # The library picks REFRESH_TOKEN_AUTH when a token is passed.
+        portal_url = entry.data.get(CONF_PORTAL_URL)
         self.client_api = VeoliaAPI(
-            username=entry.data[CONF_USERNAME],
-            password=entry.data[CONF_PASSWORD],
+            username=entry.data.get(CONF_USERNAME, ""),
+            password=entry.data.get(CONF_PASSWORD, ""),
             session=async_get_clientsession(hass),
-            portal_url=entry.data.get(CONF_PORTAL_URL),
+            portal_url=portal_url,
+            refresh_token=entry.data.get(CONF_REFRESH_TOKEN),
         )
         self._consecutive_failures = 0
         # Serializes read-modify-write pushes of the alert settings: the client

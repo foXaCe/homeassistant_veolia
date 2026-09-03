@@ -36,14 +36,10 @@
       },
       "reconfigure": {
         "title": "Reconfigure Veolia",
-        "description": "Update the credentials of your Veolia account:",
-        "data": {
-          "username": "Username",
-          "password": "Password"
-        },
-        "data_description": {
-          "username": "The email address of your Veolia account.",
-          "password": "The password of your Veolia account."
+        "description": "Choose the authentication method for this entry.",
+        "menu_options": {
+          "reconfigure_credentials": "Username and password",
+          "reconfigure_token": "Refresh token (workaround, see description)"
         }
       },
       "reauth_confirm": {
@@ -55,6 +51,51 @@
         "data_description": {
           "password": "The new password of your Veolia account."
         }
+      },
+      "auth_method": {
+        "title": "Authentication method",
+        "description": "Choose how the integration will authenticate. A portal behind adaptive authentication answers a password sign-in with an SMS challenge; the refresh token is the way in for those accounts.",
+        "menu_options": {
+          "credentials": "Username and password",
+          "refresh_token": "Refresh token (workaround, see description)"
+        }
+      },
+      "refresh_token": {
+        "title": "Refresh token",
+        "description": "Only if password sign-in is refused by a verification code you never receive. The token carries its own validity, sometimes only an hour: it serves to get this address accepted by Veolia, after which you should return to the password through Reconfigure. Generate it from a machine you usually browse the portal from, with scripts/get-refresh-token.sh.",
+        "data": {
+          "refresh_token": "Refresh token"
+        }
+      },
+      "reconfigure_credentials": {
+        "title": "Username and password",
+        "description": "Update the credentials of your Veolia account:",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      },
+      "reconfigure_token": {
+        "title": "Refresh token",
+        "description": "Only if password sign-in is refused by a verification code you never receive. The token carries its own validity, sometimes only an hour: it serves to get this address accepted by Veolia, after which you should return to the password through Reconfigure. Generate it from a machine you usually browse the portal from, with scripts/get-refresh-token.sh.",
+        "data": {
+          "refresh_token": "Refresh token"
+        }
+      },
+      "reauth": {
+        "title": "Re-authenticate Veolia",
+        "description": "Choose how to restore the connection.",
+        "menu_options": {
+          "reauth_confirm": "Username and password",
+          "reauth_token": "Refresh token (workaround, see description)"
+        }
+      },
+      "reauth_token": {
+        "title": "Refresh token",
+        "description": "Only if password sign-in is refused by a verification code you never receive. The token carries its own validity, sometimes only an hour: it serves to get this address accepted by Veolia, after which you should return to the password through Reconfigure. Generate it from a machine you usually browse the portal from, with scripts/get-refresh-token.sh.",
+        "data": {
+          "refresh_token": "Refresh token"
+        }
       }
     },
     "error": {
@@ -64,7 +105,9 @@
       "commune_not_supported": "Sorry, your Veolia account is not supported by this integration. You must wait for the migration to the new site (this step depends solely on Veolia). Once the migration is done, please try again.",
       "no_communes_found": "No communes found for this postal code",
       "commune_not_veolia": "Veolia does not provide water in this commune",
-      "commune_maintenance": "The Veolia portal for this commune is under maintenance. Please try again later."
+      "commune_maintenance": "The Veolia portal for this commune is under maintenance. Please try again later.",
+      "mfa_challenge": "Veolia demanded an extra verification this integration cannot answer: the code is sent by SMS to the number held by its identity provider, which is often an unverified placeholder after migration. Go back and pick the refresh token method. Generate one from a machine you usually browse the Veolia portal from -- adaptive authentication asks for no code there -- with scripts/get-refresh-token.sh, then paste it below.",
+      "invalid_refresh_token": "Invalid or expired refresh token"
     },
     "abort": {
       "already_configured": "This account is already configured",

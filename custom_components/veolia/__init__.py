@@ -22,6 +22,7 @@ import homeassistant.helpers.config_validation as cv
 
 from .const import (
     CONF_PORTAL_URL,
+    CONF_REFRESH_TOKEN,
     DOMAIN,
     INITIAL_REFRESH_BACKOFF,
     INITIAL_REFRESH_RETRIES,
@@ -146,11 +147,14 @@ async def async_migrate_entry(hass: HomeAssistant, entry: VeoliaConfigEntry) -> 
 
     if entry.version == 1:
         LOGGER.info("Migrating config entry %s from version 1 to 2", entry.entry_id)
+        # A v1 entry may already carry a refresh token rather than credentials.
+        portal_url = entry.data.get(CONF_PORTAL_URL)
         api = VeoliaAPI(
-            username=entry.data[CONF_USERNAME],
-            password=entry.data[CONF_PASSWORD],
+            username=entry.data.get(CONF_USERNAME, ""),
+            password=entry.data.get(CONF_PASSWORD, ""),
             session=async_get_clientsession(hass),
-            portal_url=entry.data.get(CONF_PORTAL_URL),
+            portal_url=portal_url,
+            refresh_token=entry.data.get(CONF_REFRESH_TOKEN),
         )
         try:
             login_ok = await api.login()

@@ -136,6 +136,28 @@ Dans le résultat JSON, cherchez votre commune et examinez le champ `type_commun
 
 Votre portail n'est pas géré ? Voir [CONTRIBUTING.md](CONTRIBUTING.md#ajouter-un-portail)
 
+
+## Portails derrière l'authentification adaptative (fork)
+
+Sur certains portails — Eau de Toulouse Métropole notamment — Cognito répond à
+une connexion par mot de passe par un challenge `SMS_MFA` dès qu'il ne reconnaît
+pas le contexte de l'appelant. Sur les comptes migrés, l'attribut `phone_number`
+du pool est un bouchon non vérifié (`+33600000000`) : le code n'arrive jamais et
+le challenge ne peut pas aboutir. Le compte n'a pourtant aucune MFA configurée.
+
+`REFRESH_TOKEN_AUTH` n'est pas un flux de connexion : Cognito ne l'évalue pas au
+risque. Un jeton obtenu depuis un contexte déjà connu authentifie donc depuis
+n'importe quelle adresse.
+
+**Procédure :** lancez `scripts/get-refresh-token.sh` depuis un poste habituel,
+puis choisissez « Jeton de rafraîchissement » à l'ajout de l'intégration, ou via
+Reconfigurer sur une entrée existante.
+
+Le score de risque de Cognito se réchauffe : une adresse qui présente des jetons
+valides finit par être acceptée, et le mode identifiant/mot de passe redevient
+utilisable. Le jeton, plafonné à une heure sur ce pool et sans rotation, est
+l'outil d'amorçage à froid — pas le régime permanent.
+
 ## Installation
 
 ### Via [HACS](https://hacs.xyz/) (recommandé)

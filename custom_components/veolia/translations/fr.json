@@ -36,14 +36,10 @@
       },
       "reconfigure": {
         "title": "Reconfigurer Veolia",
-        "description": "Mettez à jour les identifiants de votre compte Veolia :",
-        "data": {
-          "username": "Nom d'utilisateur",
-          "password": "Mot de passe"
-        },
-        "data_description": {
-          "username": "L'adresse e-mail de votre compte Veolia.",
-          "password": "Le mot de passe de votre compte Veolia."
+        "description": "Choisissez la méthode de connexion de cette entrée.",
+        "menu_options": {
+          "reconfigure_credentials": "Identifiant et mot de passe",
+          "reconfigure_token": "Jeton de rafraîchissement (dépannage, voir la description)"
         }
       },
       "reauth_confirm": {
@@ -55,6 +51,51 @@
         "data_description": {
           "password": "Le nouveau mot de passe de votre compte Veolia."
         }
+      },
+      "auth_method": {
+        "title": "Méthode de connexion",
+        "description": "Choisissez comment l'intégration s'authentifiera. Un portail placé derrière l'authentification adaptative répond à une connexion par mot de passe par un code SMS ; le jeton de rafraîchissement est la voie d'entrée pour ces comptes.",
+        "menu_options": {
+          "credentials": "Identifiant et mot de passe",
+          "refresh_token": "Jeton de rafraîchissement (dépannage, voir la description)"
+        }
+      },
+      "refresh_token": {
+        "title": "Jeton de rafraîchissement",
+        "description": "À n'utiliser que si la connexion par mot de passe est refusée par une demande de code que vous ne recevez pas. Le jeton porte sa propre validité, parfois une heure seulement : il sert à faire accepter cette adresse par Veolia, après quoi il faut revenir au mot de passe par Reconfigurer. Générez-le depuis un poste d'où vous consultez habituellement le portail, avec scripts/get-refresh-token.sh.",
+        "data": {
+          "refresh_token": "Jeton de rafraîchissement"
+        }
+      },
+      "reconfigure_credentials": {
+        "title": "Identifiant et mot de passe",
+        "description": "Mettez à jour les identifiants de votre compte Veolia :",
+        "data": {
+          "username": "Nom d'utilisateur",
+          "password": "Mot de passe"
+        }
+      },
+      "reconfigure_token": {
+        "title": "Jeton de rafraîchissement",
+        "description": "À n'utiliser que si la connexion par mot de passe est refusée par une demande de code que vous ne recevez pas. Le jeton porte sa propre validité, parfois une heure seulement : il sert à faire accepter cette adresse par Veolia, après quoi il faut revenir au mot de passe par Reconfigurer. Générez-le depuis un poste d'où vous consultez habituellement le portail, avec scripts/get-refresh-token.sh.",
+        "data": {
+          "refresh_token": "Jeton de rafraîchissement"
+        }
+      },
+      "reauth": {
+        "title": "Ré-authentifier Veolia",
+        "description": "Choisissez comment rétablir la connexion.",
+        "menu_options": {
+          "reauth_confirm": "Identifiant et mot de passe",
+          "reauth_token": "Jeton de rafraîchissement (dépannage, voir la description)"
+        }
+      },
+      "reauth_token": {
+        "title": "Jeton de rafraîchissement",
+        "description": "À n'utiliser que si la connexion par mot de passe est refusée par une demande de code que vous ne recevez pas. Le jeton porte sa propre validité, parfois une heure seulement : il sert à faire accepter cette adresse par Veolia, après quoi il faut revenir au mot de passe par Reconfigurer. Générez-le depuis un poste d'où vous consultez habituellement le portail, avec scripts/get-refresh-token.sh.",
+        "data": {
+          "refresh_token": "Jeton de rafraîchissement"
+        }
       }
     },
     "error": {
@@ -64,7 +105,9 @@
       "commune_not_supported": "Désolé, votre compte Veolia n'est pas pris en charge par cette intégration. Vous devez attendre la migration vers le nouveau site (cette étape dépend uniquement de Veolia). Une fois la migration effectuée, veuillez réessayer.",
       "no_communes_found": "Aucune commune trouvée pour ce code postal",
       "commune_not_veolia": "Veolia ne fournit pas d'eau dans cette commune",
-      "commune_maintenance": "Le portail Veolia de cette commune est en maintenance. Veuillez réessayer plus tard."
+      "commune_maintenance": "Le portail Veolia de cette commune est en maintenance. Veuillez réessayer plus tard.",
+      "mfa_challenge": "Veolia a exigé une vérification supplémentaire que l'intégration ne peut pas satisfaire : le code part par SMS vers le numéro enregistré dans son fournisseur d'identité, souvent un numéro de remplissage non vérifié après migration. Revenez en arrière et choisissez la méthode par jeton. Générez-en un depuis un poste d'où vous consultez habituellement le portail Veolia — l'authentification adaptative n'y réclame pas de code — avec scripts/get-refresh-token.sh, puis collez-le ci-dessous.",
+      "invalid_refresh_token": "Jeton de rafraîchissement invalide ou expiré"
     },
     "abort": {
       "already_configured": "Ce compte est déjà configuré",

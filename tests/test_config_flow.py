@@ -7,9 +7,17 @@ from unittest.mock import MagicMock
 import aiohttp
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
-from veolia_api.exceptions import VeoliaAPIInvalidCredentialsError
+from veolia_api.exceptions import (
+    VeoliaAPIChallengeError,
+    VeoliaAPIInvalidCredentialsError,
+)
 
-from custom_components.veolia.const import COMMUNES_LOOKUP_URL, CONF_PORTAL_URL, DOMAIN
+from custom_components.veolia.const import (
+    COMMUNES_LOOKUP_URL,
+    CONF_PORTAL_URL,
+    CONF_REFRESH_TOKEN,
+    DOMAIN,
+)
 from homeassistant import config_entries
 from homeassistant.components.recorder import Recorder
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
@@ -25,6 +33,7 @@ from .const import (
     MOCK_CONFIG_ENTRY_DATA,
     MOCK_PASSWORD,
     MOCK_POSTAL_CODE,
+    MOCK_REFRESH_TOKEN,
     MOCK_USERNAME,
 )
 
@@ -51,6 +60,18 @@ async def _start_to_select_commune(hass: HomeAssistant) -> dict:
 # --------------------------------------------------------------------------
 
 
+async def _pick(hass: HomeAssistant, result: dict, step: str) -> dict:
+    """Select an option in a flow menu.
+
+    Setup, reauthentication and reconfiguration all open on a method menu so
+    an entry can move between password and refresh token.
+    """
+    assert result["type"] is FlowResultType.MENU
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": step}
+    )
+
+
 async def test_full_flow_non_redirige(
     recorder_mock: Recorder,
     hass: HomeAssistant,
@@ -67,6 +88,9 @@ async def test_full_flow_non_redirige(
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"commune": COMMUNE_DIRECT["libelle"]}
     )
+    assert result["step_id"] == "auth_method"
+
+    result = await _pick(hass, result, "credentials")
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "credentials"
 
@@ -101,6 +125,9 @@ async def test_full_flow_redirige_supported_portal(
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"commune": COMMUNE_REDIRECTED_SUPPORTED["libelle"]}
     )
+    assert result["step_id"] == "auth_method"
+
+    result = await _pick(hass, result, "credentials")
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "credentials"
 
@@ -244,6 +271,7 @@ async def test_flow_invalid_credentials(
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"commune": COMMUNE_DIRECT["libelle"]}
     )
+    result = await _pick(hass, result, "credentials")
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {CONF_USERNAME: MOCK_USERNAME, CONF_PASSWORD: "wrong"},
@@ -267,6 +295,7 @@ async def test_flow_login_returns_false_shows_invalid_credentials(
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"commune": COMMUNE_DIRECT["libelle"]}
     )
+    result = await _pick(hass, result, "credentials")
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {CONF_USERNAME: MOCK_USERNAME, CONF_PASSWORD: MOCK_PASSWORD},
@@ -308,6 +337,7 @@ async def test_flow_unknown_error(
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"commune": COMMUNE_DIRECT["libelle"]}
     )
+    result = await _pick(hass, result, "credentials")
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {CONF_USERNAME: MOCK_USERNAME, CONF_PASSWORD: MOCK_PASSWORD},
@@ -332,6 +362,7 @@ async def test_flow_already_configured(
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"commune": COMMUNE_DIRECT["libelle"]}
     )
+    result = await _pick(hass, result, "credentials")
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {CONF_USERNAME: MOCK_USERNAME, CONF_PASSWORD: MOCK_PASSWORD},
@@ -363,6 +394,7 @@ async def test_reauth_flow_success(
     await hass.async_block_till_done(wait_background_tasks=True)
 
     result = await entry.start_reauth_flow(hass)
+    result = await _pick(hass, result, "reauth_confirm")
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "reauth_confirm"
 
@@ -392,6 +424,7 @@ async def test_reauth_flow_unique_id_mismatch(
     entry.add_to_hass(hass)
 
     result = await entry.start_reauth_flow(hass)
+    result = await _pick(hass, result, "reauth_confirm")
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_PASSWORD: "new-password"}
     )
@@ -418,6 +451,7 @@ async def test_reauth_flow_invalid_credentials(
     entry.add_to_hass(hass)
 
     result = await entry.start_reauth_flow(hass)
+    result = await _pick(hass, result, "reauth_confirm")
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_PASSWORD: "still-wrong"}
     )
@@ -450,8 +484,9 @@ async def test_reconfigure_flow_success(
     await hass.async_block_till_done(wait_background_tasks=True)
 
     result = await entry.start_reconfigure_flow(hass)
+    result = await _pick(hass, result, "reconfigure_credentials")
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "reconfigure"
+    assert result["step_id"] == "reconfigure_credentials"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -481,13 +516,14 @@ async def test_reconfigure_flow_invalid_credentials(
     entry.add_to_hass(hass)
 
     result = await entry.start_reconfigure_flow(hass)
+    result = await _pick(hass, result, "reconfigure_credentials")
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {CONF_USERNAME: MOCK_USERNAME, CONF_PASSWORD: "still-wrong"},
     )
 
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "reconfigure"
+    assert result["step_id"] == "reconfigure_credentials"
     assert result["errors"] == {"base": "invalid_credentials"}
 
 
@@ -507,6 +543,7 @@ async def test_reconfigure_flow_unique_id_mismatch(
     entry.add_to_hass(hass)
 
     result = await entry.start_reconfigure_flow(hass)
+    result = await _pick(hass, result, "reconfigure_credentials")
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {CONF_USERNAME: MOCK_USERNAME, CONF_PASSWORD: MOCK_PASSWORD},
@@ -514,3 +551,204 @@ async def test_reconfigure_flow_unique_id_mismatch(
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "unique_id_mismatch"
+
+
+# --------------------------------------------------------------------------
+# Refresh-token method
+# --------------------------------------------------------------------------
+
+
+async def _start_to_auth_method(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+) -> dict:
+    """Run the user flow up to the authentication method menu."""
+    _mock_communes(aioclient_mock, COMMUNE_DIRECT)
+    result = await _start_to_select_commune(hass)
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"commune": COMMUNE_DIRECT["libelle"]}
+    )
+
+
+async def test_full_flow_with_refresh_token(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    aioclient_mock: AiohttpClientMocker,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """The token method creates an entry holding no credentials."""
+    result = await _start_to_auth_method(hass, aioclient_mock)
+    result = await _pick(hass, result, "refresh_token")
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "refresh_token"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_REFRESH_TOKEN: MOCK_REFRESH_TOKEN}
+    )
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_REFRESH_TOKEN] == MOCK_REFRESH_TOKEN
+    assert CONF_PASSWORD not in result["data"]
+    assert CONF_USERNAME not in result["data"]
+    assert (
+        mock_veolia_api.config_flow_cls.call_args.kwargs["refresh_token"]
+        == MOCK_REFRESH_TOKEN
+    )
+
+
+async def test_challenge_reports_mfa_error(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    aioclient_mock: AiohttpClientMocker,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """A Cognito challenge is told apart from a plain rejection.
+
+    It is the one failure the user can act on, by switching methods.
+    """
+    mock_veolia_api.login.side_effect = VeoliaAPIChallengeError("SMS_MFA")
+    result = await _start_to_auth_method(hass, aioclient_mock)
+    result = await _pick(hass, result, "credentials")
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_USERNAME: MOCK_USERNAME, CONF_PASSWORD: MOCK_PASSWORD},
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "mfa_challenge"}
+
+
+async def test_reconfigure_to_token_drops_the_password(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """Switching to the token method removes the credentials it replaces."""
+    entry = MockConfigEntry(
+        domain=DOMAIN, unique_id=MOCK_ACCOUNT_ID, data=MOCK_CONFIG_ENTRY_DATA
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    result = await entry.start_reconfigure_flow(hass)
+    result = await _pick(hass, result, "reconfigure_token")
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_REFRESH_TOKEN: MOCK_REFRESH_TOKEN}
+    )
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    assert result["type"] is FlowResultType.ABORT
+    assert entry.data[CONF_REFRESH_TOKEN] == MOCK_REFRESH_TOKEN
+    assert CONF_PASSWORD not in entry.data
+    assert CONF_USERNAME not in entry.data
+
+
+async def test_reconfigure_to_credentials_drops_the_token(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """Switching back to a password removes the token it replaces."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=MOCK_ACCOUNT_ID,
+        data={CONF_REFRESH_TOKEN: MOCK_REFRESH_TOKEN, CONF_PORTAL_URL: None},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    result = await entry.start_reconfigure_flow(hass)
+    result = await _pick(hass, result, "reconfigure_credentials")
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_USERNAME: MOCK_USERNAME, CONF_PASSWORD: MOCK_PASSWORD},
+    )
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    assert result["type"] is FlowResultType.ABORT
+    assert entry.data[CONF_USERNAME] == MOCK_USERNAME
+    assert CONF_REFRESH_TOKEN not in entry.data
+
+
+async def test_token_entry_reauth_asks_for_full_credentials(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """A token entry holds no username, so reauth asks for both fields."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=MOCK_ACCOUNT_ID,
+        data={CONF_REFRESH_TOKEN: MOCK_REFRESH_TOKEN, CONF_PORTAL_URL: None},
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+    result = await _pick(hass, result, "reauth_confirm")
+    assert result["type"] is FlowResultType.FORM
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_USERNAME: MOCK_USERNAME, CONF_PASSWORD: MOCK_PASSWORD},
+    )
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    assert result["type"] is FlowResultType.ABORT
+    assert entry.data[CONF_USERNAME] == MOCK_USERNAME
+    assert CONF_REFRESH_TOKEN not in entry.data
+
+
+async def test_coordinator_passes_the_token_to_the_client(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """An entry carrying a token authenticates with it, not with a password."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=MOCK_ACCOUNT_ID,
+        data={CONF_REFRESH_TOKEN: MOCK_REFRESH_TOKEN, CONF_PORTAL_URL: None},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    kwargs = mock_veolia_api.coordinator_cls.call_args.kwargs
+    assert kwargs["refresh_token"] == MOCK_REFRESH_TOKEN
+    assert not kwargs["password"]
+
+
+async def test_reauth_token_replaces_the_stored_token(
+    recorder_mock: Recorder,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    mock_veolia_api: MagicMock,
+) -> None:
+    """Reauthentication by token swaps the dead one for the new one."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=MOCK_ACCOUNT_ID,
+        data={CONF_REFRESH_TOKEN: "expired-token", CONF_PORTAL_URL: None},
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+    result = await _pick(hass, result, "reauth_token")
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reauth_token"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_REFRESH_TOKEN: MOCK_REFRESH_TOKEN}
+    )
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    assert result["type"] is FlowResultType.ABORT
+    assert entry.data[CONF_REFRESH_TOKEN] == MOCK_REFRESH_TOKEN

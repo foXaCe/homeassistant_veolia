@@ -10,6 +10,7 @@ LOGGER: Logger = getLogger(__package__)
 DOMAIN: Final = "veolia"
 NAME: Final = "Veolia"
 CONF_PORTAL_URL: Final = "portal_url"
+CONF_REFRESH_TOKEN: Final = "refresh_token"
 
 # Config flow form keys
 CONF_POSTAL_CODE: Final = "postal_code"

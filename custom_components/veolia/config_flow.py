@@ -7,7 +7,10 @@ from urllib.parse import urlparse
 
 import aiohttp
 from veolia_api import VeoliaAPI
-from veolia_api.exceptions import VeoliaAPIInvalidCredentialsError
+from veolia_api.exceptions import (
+    VeoliaAPIChallengeError,
+    VeoliaAPIInvalidCredentialsError,
+)
 from veolia_api.portals import VEOLIA_PORTAL_CLIENTS
 import voluptuous as vol
 
@@ -42,6 +45,7 @@ from .const import (
     CONF_COST_PER_M3,
     CONF_PORTAL_URL,
     CONF_POSTAL_CODE,
+    CONF_REFRESH_TOKEN,
     DEFAULT_COST_PER_M3,
     DEFAULT_SCAN_INTERVAL_HOURS,
     DOMAIN,
@@ -68,6 +72,14 @@ STEP_CREDENTIALS_SCHEMA = vol.Schema(
             TextSelectorConfig(
                 type=TextSelectorType.PASSWORD, autocomplete="current-password"
             )
+        ),
+    }
+)
+
+STEP_TOKEN_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_REFRESH_TOKEN): TextSelector(
+            TextSelectorConfig(type=TextSelectorType.PASSWORD)
         ),
     }
 )
@@ -131,16 +143,42 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
             async_get_clientsession(self.hass),
             portal_url=portal_url,
         )
+        return await self._async_try_login(api, username, "invalid_credentials")
+
+    async def _async_validate_token(
+        self, refresh_token: str, portal_url: str | None
+    ) -> tuple[str | None, str | None]:
+        """Validate a refresh token, same contract as :meth:`_async_validate`."""
+        api = VeoliaAPI(
+            "",
+            "",
+            async_get_clientsession(self.hass),
+            portal_url=portal_url,
+            refresh_token=refresh_token,
+        )
+        return await self._async_try_login(api, None, "invalid_refresh_token")
+
+    async def _async_try_login(
+        self, api: Any, fallback_id: str | None, rejected_error: str
+    ) -> tuple[str | None, str | None]:
+        """Log in and turn any failure into an error key.
+
+        A Cognito challenge gets its own key: it is the one failure the user
+        can act on, by switching to the refresh-token method.
+        """
         try:
             if await api.login():
                 account_id = api.account_data.id_abonnement
-                return (str(account_id) if account_id else username, None)
+                return (str(account_id) if account_id else fallback_id, None)
+        except VeoliaAPIChallengeError as err:
+            LOGGER.error("Veolia demanded the %s challenge", err.challenge_name)
+            return None, "mfa_challenge"
         except VeoliaAPIInvalidCredentialsError:
             return None, "invalid_credentials"
         except Exception:  # noqa: BLE001
             LOGGER.debug("Unknown exception during validation", exc_info=True)
             return None, "unknown"
-        return None, "invalid_credentials"
+        return None, rejected_error
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -183,7 +221,7 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
             commune_type = selected.get("type_commune") if selected else None
             if commune_type == COMMUNE_TYPE_DIRECT:
                 self._portal_url = None
-                return await self.async_step_credentials()
+                return await self.async_step_auth_method()
             if commune_type == COMMUNE_TYPE_REDIRECTED:
                 url_redirection = (
                     selected.get("url_redirection", "") if selected else ""
@@ -191,7 +229,7 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
                 hostname = urlparse(url_redirection).hostname or ""
                 if hostname in VEOLIA_PORTAL_CLIENTS:
                     self._portal_url = hostname
-                    return await self.async_step_credentials()
+                    return await self.async_step_auth_method()
                 unsupported_hint = hostname
                 errors["base"] = "commune_not_supported"
             elif commune_type == COMMUNE_TYPE_NOT_SERVED:
@@ -217,6 +255,48 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
             ),
             errors=errors,
             description_placeholders={"unsupported_portal": unsupported_hint},
+        )
+
+    async def async_step_auth_method(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Offer both authentication methods.
+
+        A portal behind adaptive authentication answers a password sign-in
+        with a challenge this integration cannot satisfy; the refresh token
+        is the way in for those accounts.
+        """
+        return self.async_show_menu(
+            step_id="auth_method",
+            menu_options=["credentials", "refresh_token"],
+        )
+
+    async def async_step_refresh_token(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Set the entry up with a Cognito refresh token."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            account_id, error = await self._async_validate_token(
+                user_input[CONF_REFRESH_TOKEN],
+                self._portal_url,
+            )
+            if error is None:
+                await self.async_set_unique_id(account_id)
+                self._abort_if_unique_id_configured()
+                return self.async_create_entry(
+                    title=f"Veolia {account_id}",
+                    data={
+                        CONF_REFRESH_TOKEN: user_input[CONF_REFRESH_TOKEN],
+                        CONF_PORTAL_URL: self._portal_url,
+                    },
+                )
+            errors["base"] = error
+
+        return self.async_show_form(
+            step_id="refresh_token",
+            data_schema=STEP_TOKEN_SCHEMA,
+            errors=errors,
         )
 
     async def async_step_credentials(
@@ -248,7 +328,16 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Allow updating the credentials of an existing entry."""
+        """Let an existing entry switch authentication method."""
+        return self.async_show_menu(
+            step_id="reconfigure",
+            menu_options=["reconfigure_credentials", "reconfigure_token"],
+        )
+
+    async def async_step_reconfigure_credentials(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Move the entry to a username and password."""
         errors: dict[str, str] = {}
         entry = self._get_reconfigure_entry()
         if user_input is not None:
@@ -262,37 +351,88 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_mismatch()
                 return self.async_update_reload_and_abort(
                     entry,
-                    data_updates={
-                        CONF_USERNAME: user_input[CONF_USERNAME],
-                        CONF_PASSWORD: user_input[CONF_PASSWORD],
-                    },
+                    data=self._switched_data(entry, user_input),
                 )
             errors["base"] = error
 
         return self.async_show_form(
-            step_id="reconfigure",
+            step_id="reconfigure_credentials",
             data_schema=self.add_suggested_values_to_schema(
                 STEP_CREDENTIALS_SCHEMA,
-                {CONF_USERNAME: entry.data[CONF_USERNAME]},
+                {CONF_USERNAME: entry.data.get(CONF_USERNAME)},
             ),
             errors=errors,
         )
 
+    async def async_step_reconfigure_token(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Move the entry to a refresh token."""
+        errors: dict[str, str] = {}
+        entry = self._get_reconfigure_entry()
+        if user_input is not None:
+            account_id, error = await self._async_validate_token(
+                user_input[CONF_REFRESH_TOKEN],
+                entry.data.get(CONF_PORTAL_URL),
+            )
+            if error is None:
+                await self.async_set_unique_id(account_id)
+                self._abort_if_unique_id_mismatch()
+                return self.async_update_reload_and_abort(
+                    entry,
+                    data=self._switched_data(entry, user_input),
+                )
+            errors["base"] = error
+
+        return self.async_show_form(
+            step_id="reconfigure_token",
+            data_schema=STEP_TOKEN_SCHEMA,
+            errors=errors,
+        )
+
+    @staticmethod
+    def _switched_data(
+        entry: ConfigEntry, user_input: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Build entry data for the chosen method, dropping the other one.
+
+        Merging would leave a stale password beside a fresh token, or the
+        reverse; the coordinator prefers a refresh token whenever the entry
+        carries one, so switching has to drop what it replaces.
+        """
+        data: dict[str, Any] = {CONF_PORTAL_URL: entry.data.get(CONF_PORTAL_URL)}
+        if CONF_REFRESH_TOKEN in user_input:
+            data[CONF_REFRESH_TOKEN] = user_input[CONF_REFRESH_TOKEN]
+        else:
+            data[CONF_USERNAME] = user_input[CONF_USERNAME]
+            data[CONF_PASSWORD] = user_input[CONF_PASSWORD]
+        return data
+
     async def async_step_reauth(
         self, entry_data: Mapping[str, Any]
     ) -> ConfigFlowResult:
-        """Handle re-authentication when credentials become invalid."""
-        return await self.async_step_reauth_confirm()
+        """Offer both methods when an entry stops authenticating."""
+        return self.async_show_menu(
+            step_id="reauth",
+            menu_options=["reauth_confirm", "reauth_token"],
+        )
 
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Confirm re-authentication by asking for a new password."""
+        """Re-authenticate with a username and password.
+
+        An entry set up with a refresh token holds no username, so the full
+        credentials form is shown in that case.
+        """
         errors: dict[str, str] = {}
         reauth_entry = self._get_reauth_entry()
+        known_username = reauth_entry.data.get(CONF_USERNAME)
+
         if user_input is not None:
+            username = known_username or user_input[CONF_USERNAME]
             account_id, error = await self._async_validate(
-                reauth_entry.data[CONF_USERNAME],
+                username,
                 user_input[CONF_PASSWORD],
                 reauth_entry.data.get(CONF_PORTAL_URL),
             )
@@ -301,15 +441,50 @@ class VeoliaFlowHandler(ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_mismatch()
                 return self.async_update_reload_and_abort(
                     reauth_entry,
-                    data_updates={CONF_PASSWORD: user_input[CONF_PASSWORD]},
+                    data=self._switched_data(
+                        reauth_entry,
+                        {
+                            CONF_USERNAME: username,
+                            CONF_PASSWORD: user_input[CONF_PASSWORD],
+                        },
+                    ),
                 )
             errors["base"] = error
 
         return self.async_show_form(
             step_id="reauth_confirm",
-            data_schema=STEP_REAUTH_SCHEMA,
+            data_schema=(
+                STEP_REAUTH_SCHEMA if known_username else STEP_CREDENTIALS_SCHEMA
+            ),
             errors=errors,
-            description_placeholders={CONF_USERNAME: reauth_entry.data[CONF_USERNAME]},
+            description_placeholders={CONF_USERNAME: known_username or ""},
+        )
+
+    async def async_step_reauth_token(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Re-authenticate with a fresh refresh token."""
+        errors: dict[str, str] = {}
+        reauth_entry = self._get_reauth_entry()
+
+        if user_input is not None:
+            account_id, error = await self._async_validate_token(
+                user_input[CONF_REFRESH_TOKEN],
+                reauth_entry.data.get(CONF_PORTAL_URL),
+            )
+            if error is None:
+                await self.async_set_unique_id(account_id)
+                self._abort_if_unique_id_mismatch()
+                return self.async_update_reload_and_abort(
+                    reauth_entry,
+                    data=self._switched_data(reauth_entry, user_input),
+                )
+            errors["base"] = error
+
+        return self.async_show_form(
+            step_id="reauth_token",
+            data_schema=STEP_TOKEN_SCHEMA,
+            errors=errors,
         )
 
 
