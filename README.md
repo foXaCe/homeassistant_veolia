@@ -158,6 +158,12 @@ valides finit par être acceptée, et le mode identifiant/mot de passe redevient
 utilisable. Le jeton, plafonné à une heure sur ce pool et sans rotation, est
 l'outil d'amorçage à froid — pas le régime permanent.
 
+Comptez une heure de service, une seule : le jeton d'accès et le jeton de
+rafraîchissement sont émis en même temps et expirent ensemble, donc aucun
+renouvellement ne peut aboutir. Passée cette heure, l'intégration demande une
+ré-authentification ; revenez alors à l'identifiant et au mot de passe par
+Reconfigurer, l'adresse étant désormais connue de Cognito.
+
 ## Installation
 
 ### Via [HACS](https://hacs.xyz/) (recommandé)
