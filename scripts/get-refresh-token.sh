@@ -14,6 +14,7 @@ set -u
 # National portal by default. For another portal, take the client id from the
 # VEOLIA_PORTALS table in veolia_api/portals.py, for instance:
 #   VEOLIA_CLIENT_ID=19bjc8ldefie683n889iiubjc8   Eau de Toulouse Metropole
+#   VEOLIA_CLIENT_ID=91a3v5b3pef8cjbb3s0pdrnm2   Atlantic'eau (Loire-Atlantique)
 #   VEOLIA_CLIENT_ID=54e8dri103e65defj6p67eolli   Eau de Perpignan Mediterranee
 CLIENT_ID="${VEOLIA_CLIENT_ID:-3kghade1fg54739kj8pkbova8j}"
 
