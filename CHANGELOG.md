@@ -9,6 +9,13 @@ Ce fichier est maintenu automatiquement par
 [release-please](https://github.com/googleapis/release-please) à partir des
 conventional commits.
 
+## [4.3.0](https://github.com/foXaCe/homeassistant_veolia/compare/v4.2.0...v4.3.0) (2026-09-08)
+
+
+### Added
+
+* support the Atlantic'eau portal (Loire-Atlantique) ([#59](https://github.com/foXaCe/homeassistant_veolia/issues/59)) ([984db5c](https://github.com/foXaCe/homeassistant_veolia/commit/984db5c589b171a641d7400f5cd0621169ed7917))
+
 ## [4.2.0](https://github.com/foXaCe/homeassistant_veolia/compare/v4.1.0...v4.2.0) (2026-09-03)
 
 
