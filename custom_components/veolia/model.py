@@ -59,6 +59,7 @@ def _find_last_for_date(
     records: list[dict[str, Any]], d: date
 ) -> dict[str, Any] | None:
     """Find the most recent record matching date ``d``."""
+    rec: dict[str, Any]
     for rec in reversed(records or []):
         if _parse_date(rec.get(DATA_DATE, "")) == d:
             return rec

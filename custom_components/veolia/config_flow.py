@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import aiohttp
+import probatio as vol
 from veolia_api import VeoliaAPI
 from veolia_api.exceptions import (
     VeoliaAPIChallengeError,
     VeoliaAPIInvalidCredentialsError,
 )
 from veolia_api.portals import VEOLIA_PORTAL_CLIENTS
-import voluptuous as vol
 
 from homeassistant.config_entries import (
     ConfigEntry,
