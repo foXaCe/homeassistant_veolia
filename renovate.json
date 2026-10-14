@@ -12,8 +12,12 @@
     ":separatePatchReleases",
     "schedule:nonOfficeHours"
   ],
-  "labels": ["dependencies"],
-  "assignees": ["foXaCe"],
+  "labels": [
+    "dependencies"
+  ],
+  "assignees": [
+    "foXaCe"
+  ],
   "prCreation": "immediate",
   "prHourlyLimit": 4,
   "prConcurrentLimit": 10,
@@ -22,75 +26,144 @@
   "minimumReleaseAge": "3 days",
   "internalChecksFilter": "strict",
   "dependencyDashboard": true,
-  "dependencyDashboardTitle": "📦 Renovate Dependency Dashboard",
-  "dependencyDashboardLabels": ["dependencies"],
+  "dependencyDashboardTitle": "\ud83d\udce6 Renovate Dependency Dashboard",
+  "dependencyDashboardLabels": [
+    "dependencies"
+  ],
   "configMigration": true,
   "vulnerabilityAlerts": {
-    "labels": ["security", "dependencies"],
+    "labels": [
+      "security",
+      "dependencies"
+    ],
     "minimumReleaseAge": null,
-    "schedule": ["at any time"],
+    "schedule": [
+      "at any time"
+    ],
     "prCreation": "immediate"
   },
   "packageRules": [
     {
-      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "matchUpdateTypes": [
+        "patch",
+        "pin",
+        "digest"
+      ],
       "automerge": true,
       "platformAutomerge": true,
-      "labels": ["dependencies", "auto-merge"]
+      "labels": [
+        "dependencies",
+        "auto-merge"
+      ]
     },
     {
-      "matchUpdateTypes": ["minor"],
+      "matchUpdateTypes": [
+        "minor"
+      ],
       "automerge": false,
-      "labels": ["dependencies"]
+      "labels": [
+        "dependencies"
+      ]
     },
     {
-      "matchUpdateTypes": ["major"],
+      "matchUpdateTypes": [
+        "major"
+      ],
       "automerge": false,
-      "labels": ["dependencies", "breaking change"],
+      "labels": [
+        "dependencies",
+        "breaking change"
+      ],
       "minimumReleaseAge": "7 days"
     },
     {
-      "matchManagers": ["pip_requirements", "pep621"],
-      "labels": ["dependencies", "python"]
+      "matchManagers": [
+        "pip_requirements",
+        "pep621"
+      ],
+      "labels": [
+        "dependencies",
+        "python"
+      ]
     },
     {
-      "matchManagers": ["github-actions"],
-      "labels": ["dependencies", "github-actions"],
+      "matchManagers": [
+        "github-actions"
+      ],
+      "labels": [
+        "dependencies",
+        "github-actions"
+      ],
       "automerge": true,
       "platformAutomerge": true
     },
     {
-      "matchManagers": ["pre-commit"],
-      "labels": ["dependencies"],
+      "matchManagers": [
+        "pre-commit"
+      ],
+      "labels": [
+        "dependencies"
+      ],
       "automerge": true,
       "platformAutomerge": true
     },
     {
-      "matchDepNames": ["homeassistant"],
-      "labels": ["dependencies", "homeassistant"],
+      "matchDepNames": [
+        "homeassistant"
+      ],
+      "labels": [
+        "dependencies",
+        "homeassistant"
+      ],
       "automerge": false,
       "minimumReleaseAge": "14 days",
-      "schedule": ["before 6am on the first day of the month"]
+      "schedule": [
+        "before 6am on the first day of the month"
+      ]
     },
     {
-      "matchPackageNames": ["/^ruff/", "/^mypy/"],
+      "matchPackageNames": [
+        "/^ruff/",
+        "/^mypy/"
+      ],
       "groupName": "lint & format tools",
       "automerge": true,
       "platformAutomerge": true
     },
     {
-      "matchPackageNames": ["/^pytest/"],
+      "matchPackageNames": [
+        "/^pytest/"
+      ],
       "groupName": "pytest stack"
+    },
+    {
+      "description": "Tout ce qui monte se fusionne seul quand la CI est verte (op\u00e9rateur, 2026-10-14)",
+      "matchUpdateTypes": [
+        "minor",
+        "major"
+      ],
+      "automerge": true,
+      "platformAutomerge": true
     }
   ],
   "customManagers": [
     {
       "customType": "regex",
       "description": "Update PyPI requirements pinned in the Home Assistant manifest.json",
-      "managerFilePatterns": ["/custom_components/veolia/manifest\\.json$/"],
-      "matchStrings": ["\"(?<depName>[a-zA-Z0-9._-]+)==(?<currentValue>[0-9][0-9a-zA-Z.]*)\""],
+      "managerFilePatterns": [
+        "/custom_components/veolia/manifest\\.json$/"
+      ],
+      "matchStrings": [
+        "\"(?<depName>[a-zA-Z0-9._-]+)==(?<currentValue>[0-9][0-9a-zA-Z.]*)\""
+      ],
       "datasourceTemplate": "pypi"
     }
   ],
-  "ignorePaths": ["**/node_modules/**", "**/.venv/**", "**/venv/**", "**/__pycache__/**"]
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/.venv/**",
+    "**/venv/**",
+    "**/__pycache__/**"
+  ],
+  "rollbackPrs": false
 }
