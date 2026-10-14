@@ -9,6 +9,13 @@ Ce fichier est maintenu automatiquement par
 [release-please](https://github.com/googleapis/release-please) à partir des
 conventional commits.
 
+## [4.3.1](https://github.com/foXaCe/homeassistant_veolia/compare/v4.3.0...v4.3.1) (2026-10-14)
+
+
+### Fixed
+
+* use probatio for config flow schemas (HA 2026.9+) ([#70](https://github.com/foXaCe/homeassistant_veolia/issues/70)) ([9ca1999](https://github.com/foXaCe/homeassistant_veolia/commit/9ca19995aa5afb6ace139ba1cbafc3ad5db8ae2c))
+
 ## [4.3.0](https://github.com/foXaCe/homeassistant_veolia/compare/v4.2.0...v4.3.0) (2026-09-08)
 
 
