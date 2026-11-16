@@ -22,9 +22,11 @@
   "rebaseWhen": "auto",
   "minimumReleaseAge": "3 days",
   "internalChecksFilter": "strict",
-  "dependencyDashboard": true,
-  "dependencyDashboardTitle": "📦 Renovate Dependency Dashboard",
-  "dependencyDashboardLabels": ["dependencies"],
+  "dependencyDashboard": {
+    "enabled": true,
+    "title": "📦 Renovate Dependency Dashboard",
+    "labels": ["dependencies"]
+  },
   "configMigration": true,
   "vulnerabilityAlerts": {
     "labels": ["security", "dependencies"],
